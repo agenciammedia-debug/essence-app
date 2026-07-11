@@ -670,7 +670,7 @@ function llamarAPI(action, args = null) {
             clientasDataGlobal = datos;
             datosCargados = true;
             calcularResumenLocal();
-          }).obtenerDatosClientas();
+          });
         } else {
           calcularResumenLocal();
         }
@@ -860,7 +860,7 @@ function llamarAPI(action, args = null) {
                 clientasDataGlobal = datos;
                 datosCargados = true;
                 filtrarEquipo();
-             }).obtenerDatosClientas();
+             });
           } else {
              filtrarEquipo();
           }
@@ -1007,10 +1007,10 @@ if (idVista === 'resumen' || idVista === 'clientas') {
 
       function cargarFacturacion() {
         if (facturacionDataGlobal.length === 0) {
-          llamarAPI('obtenerDatosClientas').then(function(datos) {
+          llamarAPI('obtenerDatosFacturacion').then(function(datos) {
             facturacionDataGlobal = datos;
             mostrarFacturacion();
-          }).obtenerDatosFacturacion();
+          });
         } else {
           mostrarFacturacion();
         }
@@ -1477,12 +1477,12 @@ if (idVista === 'resumen' || idVista === 'clientas') {
       function cargarGastosBase() {
         if (!gastosCargados) {
           document.getElementById('loading-gastos').style.display = 'block';
-          llamarAPI('obtenerDatosClientas').then(function(datos) {
+          llamarAPI('obtenerDatosGastos').then(function(datos) {
             gastosDataGlobal = datos;
             gastosCargados = true;
             document.getElementById('loading-gastos').style.display = 'none';
             mostrarGastos();
-          }).obtenerDatosGastos();
+          });
         } else {
           mostrarGastos();
         }
