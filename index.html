@@ -1,30 +1,1632 @@
 <!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Essence</title>
-    
+<html>
+  <head>
+    <base target="_top">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Essence">
-    <link rel="apple-touch-icon" href="icon-192.png">
-    <link rel="manifest" href="manifest.json">
-
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #F2F2F7; }
-        iframe { width: 100%; height: 100%; border: none; display: block; }
+      :root {
+        --bg-color: #F2F2F7;
+        --card-bg: #FFFFFF;
+        --text-main: #000000;
+        --text-sec: #8E8E93;
+        --accent: #007AFF;
+        --success: #34C759;
+        --tab-bg: rgba(255, 255, 255, 0.85);
+        --search-bg: #E3E3E8;
+      }
+      
+      body {
+        font-family: 'Inter', sans-serif;
+        background-color: var(--bg-color);
+        margin: 0; padding: 0;
+        color: var(--text-main);
+        -webkit-font-smoothing: antialiased;
+        padding-bottom: calc(90px + env(safe-area-inset-bottom)); 
+      }
+
+      .header {
+        padding: 40px 20px 16px 20px;
+        background-color: var(--bg-color);
+        position: sticky; top: 0; z-index: 10;
+      }
+
+      .header h1 {
+        font-size: 34px; font-weight: 700; margin: 0; letter-spacing: -0.5px;
+      }
+
+      .view-container {
+        padding: 0 20px; display: none; animation: fadeIn 0.3s ease;
+      }
+      .view-container.active { display: block; }
+      @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+      /* Tarjetas de Dashboard */
+      .card {
+        background-color: var(--card-bg); border-radius: 20px; padding: 24px; margin-bottom: 16px; box-shadow: 0 4px 14px rgba(0,0,0,0.05);
+      }
+      .card-title { font-size: 13px; font-weight: 600; color: var(--text-sec); text-transform: uppercase; margin-bottom: 8px; }
+      .amount { font-size: 36px; font-weight: 700; margin: 0; letter-spacing: -1px; }
+      .amount.green { color: var(--success); }
+      .progress-container { width: 100%; background-color: #E5E5EA; border-radius: 10px; height: 12px; margin-top: 16px; overflow: hidden; }
+      .progress-fill { height: 100%; background-color: var(--accent); border-radius: 10px; width: 0%; transition: width 1s ease-in-out; }
+      .flex-row { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; }
+
+      /* =========================================
+         ESTILOS VISTA CLIENTAS (IOS STYLE)
+         ========================================= */
+      .search-container {
+        display: flex; gap: 10px; margin-bottom: 16px;
+      }
+      .search-bar {
+        flex: 1;
+        background-color: var(--search-bg);
+        border: none; border-radius: 10px; padding: 10px 16px;
+        font-size: 16px; font-family: 'Inter', sans-serif;
+        outline: none;
+      }
+      .filter-select {
+        background-color: var(--search-bg); color: var(--accent);
+        border: none; border-radius: 10px; padding: 10px;
+        font-size: 14px; font-weight: 600; outline: none;
+        -webkit-appearance: none; text-align: center;
+      }
+      
+      .client-card {
+        background-color: var(--card-bg); border-radius: 16px; padding: 16px; margin-bottom: 12px;
+      }
+      .client-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+      .client-name { font-size: 17px; font-weight: 600; margin: 0; }
+      .client-total { font-size: 17px; font-weight: 700; margin: 0; color: var(--success); }
+      .client-detail { font-size: 13px; color: var(--text-sec); margin: 2px 0; line-height: 1.4; }
+      .badge {
+        display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; margin-top: 8px;
+      }
+      .badge-metodo { background-color: #E5E5EA; color: var(--text-main); margin-right: 6px; }
+      .badge-staff { background-color: rgba(0, 122, 255, 0.1); color: var(--accent); }
+
+      /* Barra Inferior */
+      .tab-bar {
+        position: fixed; bottom: 0; left: 0; width: 100%; background: var(--tab-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-top: 0.5px solid rgba(0,0,0,0.1); display: flex; justify-content: space-around; padding-top: 10px; padding-bottom: env(safe-area-inset-bottom, 20px); z-index: 100;
+      }
+      .tab-item { display: flex; flex-direction: column; align-items: center; color: var(--text-sec); font-size: 10px; font-weight: 600; width: 25%; cursor: pointer; }
+      .tab-item svg { width: 24px; height: 24px; margin-bottom: 4px; fill: currentColor; }
+      .tab-item.active { color: var(--accent); }
+      .loader { text-align: center; color: var(--text-sec); font-size: 14px; margin-top: 50px; }
+      .empty-state { text-align: center; color: var(--text-sec); padding: 40px 0; font-size: 15px;}
+
+      /* =========================================
+         POP-UP EDICIÓN (ESTILO IOS BOTTOM SHEET)
+         ========================================= */
+      .modal-overlay {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+        z-index: 999; display: none; justify-content: center; align-items: flex-end;
+        opacity: 0; transition: opacity 0.3s ease;
+      }
+      .modal-overlay.active { opacity: 1; }
+      
+      .modal-content {
+        background: var(--bg-color); width: 100%; max-height: 85vh;
+        border-radius: 20px 20px 0 0; padding: 24px 20px; box-sizing: border-box;
+        overflow-y: auto; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.1, 0.8, 0.2, 1);
+        padding-bottom: env(safe-area-inset-bottom, 40px);
+      }
+      .modal-overlay.active .modal-content { transform: translateY(0); }
+      
+      .modal-header-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+      .modal-btn { background: none; border: none; color: var(--accent); font-size: 17px; font-weight: 600; cursor: pointer; padding: 0; }
+      .modal-title { font-size: 17px; font-weight: 600; }
+      
+      .form-group { margin-bottom: 12px; }
+      .form-label { display: block; font-size: 12px; font-weight: 600; color: var(--text-sec); margin-bottom: 6px; text-transform: uppercase; margin-left: 5px;}
+      .modal-input {
+        width: 100%; background: white; border: none; border-radius: 12px;
+        padding: 14px 16px; font-size: 16px; box-sizing: border-box;
+        font-family: 'Inter', sans-serif; color: var(--text-main);
+      }
+
+      .select-ios {
+        -webkit-appearance: none;
+        background: white url("data:image/svg+xml,%3Csvg viewBox='0 0 140 140' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M20 40 L70 90 L120 40' stroke='%23000' stroke-width='15' fill='none'/%3E%3C/svg%3E") no-repeat right 15px center/10px;
+      }
+
+      /* =========================================
+         BOTÓN FLOTANTE (FAB) Y MODAL CONFIG
+         ========================================= */
+      .fab-btn {
+        position: fixed; bottom: 100px; right: 20px;
+        width: 50px; height: 50px; border-radius: 25px;
+        background-color: var(--card-bg); color: var(--text-sec);
+        display: flex; justify-content: center; align-items: center;
+        box-shadow: 0 4px 14px rgba(0,0,0,0.15);
+        border: none; cursor: pointer; z-index: 90;
+        backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+      }
+      .fab-btn svg { width: 24px; height: 24px; fill: currentColor; }
+
     </style>
-</head>
-<body>
-    <iframe src="https://script.google.com/macros/s/AKfycbzLVAzXBQGFWdEQhM48iaYgJUMbPrbZ_BZK1yxTKKCBDkNcVXPFHrAFVpZ1LsSA6ceq0Q/exec" allowfullscreen></iframe>
+  </head>
+  <body>
+
+    <div class="header" style="display: flex; justify-content: space-between; align-items: flex-end;">
+  <h1 id="header-title" style="margin: 0;">Resumen</h1>
+  <div style="display: flex; align-items: center; gap: 10px;">
+    <h1 id="header-count" style="margin: 0; display: none; color: var(--text-sec);">00</h1>
+    
+    <div id="btn-calendario" style="display: none; position: relative; width: 38px; height: 38px; background: rgba(0,122,255,0.1); border-radius: 12px; align-items: center; justify-content: center; color: var(--accent);">
+      
+      <svg style="width: 22px; height: 22px; fill: currentColor; pointer-events: none;" viewBox="0 0 24 24">
+        <path d="M19,19H5V8H19M16,1V3H8V1H6V3H5C3.89,3 3,3.89 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5C21,3.89 20.1,3 19,3H18V1M17,12H12V17H17V12Z"/>
+      </svg>
+
+      <input type="date" id="input-fecha-nativa" onchange="manejarCambioFecha(this.value)" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; border: none; padding: 0; margin: 0; -webkit-appearance: none;">
+    </div>
+
+  </div>
+</div>
+
+    <div id="view-resumen" class="view-container active">
+      
+      <div class="search-container" style="flex-wrap: wrap; gap: 10px; margin-bottom: 16px;">
+        <select id="resumen-filtro-fecha" class="filter-select select-ios" style="flex: 1;" onchange="filtrarResumen()">
+          <option value="este_mes" selected>Este mes</option>
+          <option value="hoy">Hoy</option>
+          <option value="ayer">Ayer</option>
+          <option value="mes_pasado">Mes pasado</option>
+          <option value="semana">Últimos 7 días</option>
+          <option value="14dias">Últimos 14 días</option>
+          <option value="30dias">Últimos 30 días</option>
+          <option value="rango">Fechas específicas...</option>
+        </select>
+      </div>
+
+      <div id="resumen-rango-fechas" style="display: none; gap: 10px; margin-bottom: 16px;">
+        <input type="date" id="resumen-fecha-inicio" class="search-bar" style="font-size: 14px; flex: 1;" onchange="filtrarResumen()">
+        <input type="date" id="resumen-fecha-fin" class="search-bar" style="font-size: 14px; flex: 1;" onchange="filtrarResumen()">
+      </div>
+
+      <div id="loading-resumen" class="loader">Sincronizando Resumen...</div>
+      
+      <div id="content-resumen" style="display:none;">
+        
+        <div class="card">
+          <div class="card-title">Ingresos</div>
+          <div class="amount green" id="lbl-hoy">S/. 0.00</div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 12px; border-top: 1px solid #E5E5EA; padding-top: 15px; margin-top: 15px; color: var(--text-sec);">
+            <div style="display: flex; justify-content: space-between;"><span>PLIN:</span> <strong id="lbl-plin" style="color: var(--text-main);">S/. 0.00</strong></div>
+            <div style="display: flex; justify-content: space-between;"><span>YAPE:</span> <strong id="lbl-yape" style="color: var(--text-main);">S/. 0.00</strong></div>
+            <div style="display: flex; justify-content: space-between;"><span>EFECTIVO:</span> <strong id="lbl-efectivo" style="color: var(--text-main);">S/. 0.00</strong></div>
+            <div style="display: flex; justify-content: space-between;"><span>TARJETA:</span> <strong id="lbl-tcredito" style="color: var(--text-main);">S/. 0.00</strong></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <div class="card-title" style="margin: 0;">Progreso</div>
+            <div style="font-size: 11px; color: var(--accent); font-weight: 600; background: rgba(0,122,255,0.1); padding: 4px 8px; border-radius: 8px;" id="lbl-faltan-dias">Faltan 0 días</div>
+          </div>
+          <div class="amount" id="lbl-mes">S/. 0.00</div>
+          <div class="progress-container"><div class="progress-fill" id="bar-progreso"></div></div>
+          <div class="flex-row">
+            <span style="color: var(--text-sec); font-size: 14px;">Objetivo: <span id="lbl-meta">S/. 32,000</span></span>
+            <span style="font-weight: 600; font-size: 14px; color: var(--accent);" id="lbl-porcentaje">0%</span>
+          </div>
+        </div>
+
+            <div class="card">
+  <div class="card-title"></div>
+  
+  <div style="text-align: center; margin: 15px 0 25px 0;">
+    <div style="font-size: 11px; color: var(--text-sec); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Total Atendidas</div>
+    <div class="amount" id="lbl-clientas-total" style="font-size: 48px; margin-top: 5px;">0</div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; border-top: 1px solid #F2F2F7; padding-top: 20px;">
+    <div style="text-align: center; border-right: 0.5px solid #E5E5EA;">
+      <div style="font-size: 11px; color: var(--text-sec); margin-bottom: 4px; font-weight: 500;">Nuevas</div>
+      <div style="font-size: 22px; font-weight: 700; color: var(--text-main);" id="lbl-clientas-nuevas">0</div>
+      <div style="font-size: 12px; font-weight: 600; color: var(--accent); margin-top: 2px; background: rgba(0,122,255,0.08); display: inline-block; padding: 2px 8px; border-radius: 6px;" id="lbl-pct-nuevas">0%</div>
+    </div>
+    <div style="text-align: center;">
+      <div style="font-size: 11px; color: var(--text-sec); margin-bottom: 4px; font-weight: 500;">Recurrentes</div>
+      <div style="font-size: 22px; font-weight: 700; color: var(--text-main);" id="lbl-clientas-recurrentes">0</div>
+      <div style="font-size: 12px; font-weight: 600; color: var(--success); margin-top: 2px; background: rgba(52,199,89,0.08); display: inline-block; padding: 2px 8px; border-radius: 6px;" id="lbl-pct-recurrentes">0%</div>
+    </div>
+  </div>
+
+  <div style="margin-top: 20px; padding: 16px; background: rgba(255,45,85,0.05); border-radius: 16px; display: flex; justify-content: space-between; align-items: center;">
+    <div>
+      <div style="color: #FF2D55; font-weight: 700; font-size: 14px;">Up Selling</div>
+      <div id="lbl-pct-upselling" style="font-size: 11px; font-weight: 700; color: #FF2D55; background: rgba(255,45,85,0.12); padding: 2px 8px; border-radius: 6px; margin-top: 4px; display: inline-block;">0% del total</div>
+    </div>
+    <strong id="lbl-clientas-upselling" style="color: #FF2D55; font-size: 28px;">0</strong>
+  </div>
+</div>
+
+<div class="card" style="margin-top: 16px;">
+  <div class="card-title">Rendimiento por Equipo</div>
+  <div id="lista-rendimiento-equipo" style="margin-top: 15px;">
+    </div>
+</div>
+
+      </div>
+      <button class="fab-btn" onclick="abrirModalConfig()">
+          <svg viewBox="0 0 24 24"><path d="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.21,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.21,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.68 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z"/></svg>
+        </button>
+    </div>
+
+    <div id="view-clientas" class="view-container">
+      
+      <div class="search-container" style="flex-wrap: wrap; gap: 10px;">
+        <input type="text" id="buscador" class="search-bar" style="width: 100%;" placeholder="Buscar clienta, servicio, pago, up selling..." oninput="filtrarClientas()">
+        
+        <div style="display: flex; gap: 10px; width: 100%;">
+          <select id="filtro-fecha" class="filter-select" style="flex: 1;" onchange="filtrarClientas()">
+            <option value="este_mes" selected>Este mes</option>
+            <option value="hoy">Hoy</option>
+            <option value="ayer">Ayer</option>
+            <option value="3dias">Últimos 3 días</option>
+            <option value="semana">Últimos 7 días</option>
+            <option value="30dias">Últimos 30 días</option>
+            <option value="mes_pasado">Mes pasado</option>
+            <option value="todo">Todo</option>
+            <option value="rango">Específicas...</option>
+          </select>
+          
+          <select id="filtro-staff" class="filter-select" style="flex: 1;" onchange="filtrarClientas()">
+            <option value="todas" selected>Equipo (Todas)</option>
+            <option value="mari">Mari</option>
+            <option value="alondra">Alondra</option>
+            <option value="darcy">Darcy</option>
+            <option value="elliani">Elliani</option>
+            <option value="fressia">Fressia</option>
+            <option value="carmen">Carmen</option> </select>
+        </div>
+      </div> 
+      <div id="rango-fechas" style="display: none; gap: 10px; margin-bottom: 16px;">
+        <input type="date" id="fecha-inicio" class="search-bar" style="font-size: 14px;" onchange="filtrarClientas()">
+        <input type="date" id="fecha-fin" class="search-bar" style="font-size: 14px;" onchange="filtrarClientas()">
+      </div>
+
+      <div id="loading-clientas" class="loader">Cargando base de datos...</div>
+      
+      <div id="lista-clientas"></div>
+      
+    </div>
+
+    <div id="view-facturacion" class="view-container">
+      
+      <div class="search-container">
+        <select id="fact-filtro-fecha" class="filter-select" style="width: 100%;" onchange="cargarFacturacion()">
+          <option value="hoy">Hoy</option>
+          <option value="ayer">Ayer</option>
+          <option value="semana">Últimos 7 días</option>
+          <option value="este_mes" selected>Este mes</option>
+          <option value="30dias">Últimos 30 días</option>
+          <option value="mes_pasado">Mes pasado</option>
+          <option value="todo">Todo el historial</option>
+          <option value="rango">Fechas específicas...</option>
+        </select>
+      </div>
+
+      <div id="fact-rango-fechas" style="display: none; gap: 10px; margin-bottom: 16px;">
+        <input type="date" id="fact-fecha-inicio" class="search-bar" style="font-size: 14px; flex: 1;" onchange="cargarFacturacion()">
+        <input type="date" id="fact-fecha-fin" class="search-bar" style="font-size: 14px; flex: 1;" onchange="cargarFacturacion()">
+      </div>
+
+      <div class="card" style="padding: 20px; background: var(--accent); color: white; margin-bottom: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+          <div>
+            <div style="font-size: 11px; opacity: 0.8; text-transform: uppercase;">Total Ingresos</div>
+            <div class="amount" id="fact-total" style="color: white; font-size: 32px;">S/. 0,00</div>
+          </div>
+          <div style="text-align: right;">
+            <div style="font-size: 11px; opacity: 0.8; text-transform: uppercase;">Clientas</div>
+            <div id="fact-clientes-total" style="font-size: 24px; font-weight: 700;">00</div>
+          </div>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; font-size: 11px; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 15px;">
+          <div>PLIN/YAPE<br><span id="fact-plin" style="font-size: 13px; font-weight: 700;">S/. 0</span></div>
+          <div>TARJETA<br><span id="fact-tarjeta" style="font-size: 13px; font-weight: 700;">S/. 0</span></div>
+          <div>EFECTIVO<br><span id="fact-efectivo" style="font-size: 13px; font-weight: 700;">S/. 0</span></div>
+        </div>
+      </div>
+
+      <div id="lista-facturacion"></div>
+    </div>
+    <div id="view-comisiones" class="view-container">
+      
+      <div class="search-container" style="flex-wrap: wrap; gap: 10px; margin-bottom: 16px;">
+        <select id="equipo-filtro-fecha" class="filter-select select-ios" style="flex: 1;" onchange="filtrarEquipo()">
+          <option value="esta_semana" selected>Esta semana</option>
+          <option value="semana_pasada">Semana pasada</option>
+          <option value="este_mes">Este mes</option>
+          <option value="mes_pasado">Mes pasado</option>
+          <option value="rango">Fechas específicas...</option>
+        </select>
+      </div>
+
+      <div id="equipo-rango-fechas" style="display: none; gap: 10px; margin-bottom: 16px;">
+        <input type="date" id="equipo-fecha-inicio" class="search-bar" style="font-size: 14px; flex: 1;" onchange="filtrarEquipo()">
+        <input type="date" id="equipo-fecha-fin" class="search-bar" style="font-size: 14px; flex: 1;" onchange="filtrarEquipo()">
+      </div>
+
+      <div class="card" style="padding: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">
+          <div>
+            <div class="card-title" style="margin: 0; color: var(--accent);">Comisiones</div>
+            <div id="equipo-rango-fechas-lbl" style="font-size: 11px; color: var(--text-sec); margin-top: 4px; font-weight: 500;"> Del -- al --</div>
+          </div>
+          <div style="text-align: right;">
+            <div id="equipo-total-comisiones" style="font-size: 18px; font-weight: 700; color: var(--success); margin-bottom: 4px;">S/. 0.00</div>
+            <select id="equipo-porcentaje" style="padding: 4px 12px; font-size: 13px; background-color: rgba(0,122,255,0.1); color: var(--accent); border: none; border-radius: 8px; font-weight: 700; width: auto; margin-left: auto; display: block; -webkit-appearance: none; text-align: center; cursor: pointer;" onchange="filtrarEquipo()">
+              <option value="10">10%</option>
+              <option value="12">12%</option>
+              <option value="15">15%</option>
+            </select>
+          </div>
+        </div>
+        
+        <div id="lista-comisiones" style="margin-bottom: 15px;">
+          </div>
+
+        <button class="modal-btn" style="width: 100%; background: var(--bg-color); padding: 12px; border-radius: 12px; display: flex; justify-content: center; align-items: center; gap: 8px; color: var(--accent);" onclick="copiarTexto('comisiones')">
+          <svg viewBox="0 0 24 24" style="width: 18px; fill: currentColor;"><path d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z"/></svg>
+          <span id="texto-btn-com">Copiar</span>
+        </button>
+      </div>
+
+      <div class="card" style="padding: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">
+          <div class="card-title" style="margin: 0; color: #FF2D55;">Up Selling 🤑💕</div>
+          <div id="equipo-total-upselling" style="font-size: 18px; font-weight: 700; color: #FF2D55;">0</div>
+        </div>
+        
+        <div id="lista-upselling" style="margin-bottom: 15px;">
+          </div>
+
+        <button class="modal-btn" style="width: 100%; background: var(--bg-color); padding: 12px; border-radius: 12px; display: flex; justify-content: center; align-items: center; gap: 8px; color: #FF2D55;" onclick="copiarTexto('upselling')">
+          <svg viewBox="0 0 24 24" style="width: 18px; fill: currentColor;"><path d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z"/></svg>
+          <span id="texto-btn-up">Copiar</span>
+        </button>
+      </div>
+      
+    </div>
+
+    <div id="modal-edicion" class="modal-overlay" onclick="cerrarModalEdicion(event)">
+      <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-header-nav">
+          <button class="modal-btn" onclick="cerrarModalEdicion()" style="font-weight: 400;">Cancelar</button>
+          <div class="modal-title">Editar Clienta</div>
+          <button class="modal-btn" id="btn-guardar-edicion" onclick="guardarEdicion()">Guardar</button>
+        </div>
+        
+        <input type="hidden" id="edit-fila">
+        <input type="hidden" id="edit-index">
+
+        <div class="form-group"><label class="form-label">Clienta</label><input type="text" id="edit-cliente" class="modal-input"></div>
+        <div class="form-group"><label class="form-label">Servicios</label><input type="text" id="edit-servicios" class="modal-input"></div>
+        <div class="form-group" style="display: flex; gap: 10px;">
+          <div style="flex: 1;">
+            <label class="form-label">Método</label>
+            <select id="edit-metodo" class="modal-input select-ios">
+              <option value="PLIN">PLIN</option>
+              <option value="YAPE">YAPE</option>
+              <option value="TARJETA">TARJETA</option>
+              <option value="EFECTIVO">EFECTIVO</option>
+            </select>
+          </div>
+          <div style="flex: 1;">
+            <label class="form-label">Manicurista</label>
+            <select id="edit-manicurista" class="modal-input select-ios">
+              <option value="Mari">Mari</option>
+              <option value="Alondra">Alondra</option>
+              <option value="Darcy">Darcy</option>
+              <option value="Elliani">Elliani</option>
+              <option value="Fressia">Fressia</option>
+              <option value="Carmen">Carmen</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group" style="display: flex; gap: 10px;">
+          <div style="flex: 1;"><label class="form-label">Total Cobrado</label><input type="text" id="edit-total" class="modal-input" placeholder="Ej: S/. 100,00"></div>
+          <div style="flex: 1;"><label class="form-label">Fecha y Hora</label><input type="datetime-local" id="edit-fecha" class="modal-input"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Estado</label>
+          <select id="edit-estado" class="modal-input select-ios">
+            <option value="">(Sin asignar)</option>
+            <option value="Nueva">Nueva</option>
+            <option value="Antigua">Antigua</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Comisión Extra</label>
+          <select id="edit-comision" class="modal-input select-ios">
+            <option value="">Ninguna</option>
+            <option value="UP SELLING 🤑💕">UP SELLING 🤑💕</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div id="modal-configuracion" class="modal-overlay" onclick="cerrarModalConfig(event)">
+      <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-header-nav">
+          <button class="modal-btn" onclick="cerrarModalConfig()" style="font-weight: 400;">Cancelar</button>
+          <div class="modal-title">Ajustes</div>
+          <button class="modal-btn" id="btn-guardar-config" onclick="guardarConfiguracion()">Guardar</button>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Meta Mensual (S/.)</label>
+          <input type="number" id="edit-meta" class="modal-input" placeholder="Ej: 35000">
+        </div>
+      </div>
+    </div>
+
+    <div id="view-gastos" class="view-container">
+      
+      <div class="card" style="padding: 20px; background: #000; color: white; margin-bottom: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">
+          <div>
+            <div style="font-size: 11px; opacity: 0.6; text-transform: uppercase;">Total Gastado (Filtro)</div>
+            <div id="gasto-total-periodo" style="font-size: 28px; font-weight: 700; color: #fff;">S/. 0.00</div>
+          </div>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 11px; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 15px;">
+          <div>CUENTA DE CARLOS<br><span id="deuda-carlos" style="font-size: 14px; font-weight: 700; color: #34C759;">S/. 0.00</span></div>
+          <div style="text-align: right;">CUENTA DE MARI<br><span id="deuda-mari" style="font-size: 14px; font-weight: 700; color: #34C759;">S/. 0.00</span></div>
+        </div>
+      </div>
+
+      <div class="search-container" style="flex-wrap: wrap; gap: 10px; margin-bottom: 16px;">
+        <select id="gastos-filtro-persona" class="filter-select select-ios" style="flex: 1;" onchange="mostrarGastos()">
+          <option value="todos">Todos</option>
+          <option value="Carlos">Carlos</option>
+          <option value="Mari">Mari</option>
+          <option value="Caja">Caja</option>
+        </select>
+
+        <select id="gastos-filtro-tiempo" class="filter-select select-ios" style="flex: 1;" onchange="mostrarGastos()">
+          <option value="este_mes" selected>Este Mes</option>
+          <option value="esta_semana">Esta Semana</option>
+          <option value="mes_pasado">Mes Pasado</option>
+          <option value="todo">Historial</option>
+          <option value="rango">Específicos...</option>
+        </select>
+      </div>
+
+      <div id="gastos-rango-fechas" style="display: none; gap: 10px; margin-bottom: 16px;">
+        <input type="date" id="gastos-fecha-inicio" class="search-bar" style="font-size: 14px; flex: 1;" onchange="mostrarGastos()">
+        <input type="date" id="gastos-fecha-fin" class="search-bar" style="font-size: 14px; flex: 1;" onchange="mostrarGastos()">
+      </div>
+
+      <div id="loading-gastos" class="loader">Cargando gastos...</div>
+      <div id="lista-gastos"></div>
+
+      <button class="fab-btn" onclick="abrirModalGasto()" style="background-color: #000; color: white;">
+        <svg viewBox="0 0 24 24"><path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/></svg>
+      </button>
+    </div>
+
+    <div id="modal-gasto" class="modal-overlay" onclick="cerrarModalGasto(event)">
+      <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-header-nav">
+          <button class="modal-btn" onclick="cerrarModalGasto()" style="font-weight: 400; color: #000;">Cancelar</button>
+          <div class="modal-title">Registrar Gasto</div>
+          <button class="modal-btn" id="btn-guardar-gasto" onclick="guardarNuevoGasto()" style="color: #000;">Guardar</button>
+        </div>
+        
+        <div class="form-group"><label class="form-label">¿En qué gastamos?</label><input type="text" id="gasto-desc" class="modal-input" placeholder="Ej: Insumos acrílico, Alquiler..."></div>
+        <div class="form-group"><label class="form-label">Monto (S/.)</label><input type="number" id="gasto-monto" class="modal-input" placeholder="Ej: 150"></div>
+        
+        <div class="form-group" style="display: flex; gap: 10px;">
+          <div style="flex: 1;">
+            <label class="form-label">Pagado Por</label>
+            <select id="gasto-pagador" class="modal-input select-ios">
+              <option value="Carlos">Carlos</option>
+              <option value="Mari">Mari</option>
+              <option value="Caja">Caja del Salón</option>
+            </select>
+          </div>
+          <div style="flex: 1;">
+            <label class="form-label">Método</label>
+            <select id="gasto-metodo" class="modal-input select-ios">
+              <option value="PLIN">PLIN</option>
+              <option value="YAPE">YAPE</option>
+              <option value="Visa">Visa/Tarjeta</option>
+              <option value="Efectivo">Efectivo</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    
+
+
+    <div class="tab-bar" id="tab-bar">
+      <div class="tab-item active" onclick="cambiarPestana('resumen', 'Resumen', event)">
+        <svg viewBox="0 0 24 24"><path d="M3,13H7V21H3V13M17,5H21V21H17V5M10,9H14V21H10V9Z"/></svg>
+        Resumen
+      </div>
+      <div class="tab-item" onclick="cambiarPestana('clientas', 'Clientas', event)">
+        <svg viewBox="0 0 24 24"><path d="M16 17V19H2V17S2 13 9 13 16 17 16 17M12.5 7.5A3.5 3.5 0 1 0 9 11A3.5 3.5 0 0 0 12.5 7.5M23.44 11.23L17.58 17.09L14.05 13.56L15.46 12.14L17.58 14.26L22.03 9.81Z"/></svg>
+        Clientas
+      </div>
+      <div class="tab-item" onclick="cambiarPestana('facturacion', 'Facturación', event)">
+        <svg viewBox="0 0 24 24"><path d="M7,15H9C9,16.08 10.37,17 12,17C13.63,17 15,16.08 15,15C15,13.9 13.96,13.5 11.76,12.97C9.64,12.44 7,11.78 7,9C7,7.21 8.47,5.69 10.5,5.18V3H13.5V5.18C15.53,5.69 17,7.21 17,9H15C15,7.92 13.63,7 12,7C10.37,7 9,7.92 9,9C9,10.1 10.04,10.5 12.24,11.03C14.36,11.56 17,12.22 17,15C17,16.79 15.53,18.31 13.5,18.82V21H10.5V18.82C8.47,18.31 7,16.79 7,15Z"/></svg>
+        Ingresos
+      </div>
+      <div class="tab-item" onclick="cambiarPestana('gastos', 'Gastos', event)">
+        <svg viewBox="0 0 24 24"><path d="M2,5H22V19H2V5M20,17V7H4V17H20M11,10.5H10.5V9.5H13.5V10.5H13V13.5H13.5V14.5H10.5V13.5H11V10.5Z"/></svg>
+        Gastos
+      </div>
+      <div class="tab-item" onclick="cambiarPestana('comisiones', 'Equipo', event)">
+        <svg viewBox="0 0 24 24"><path d="M16,13C15.71,13 15.38,13 15.03,13.05C16.19,13.89 17,15.37 17,17V19H23V17C23,14.34 18.33,13 16,13M8,13C5.67,13 1,14.34 1,17V19H15V17C15,14.34 10.33,13 8,13M8,11A3,3 0 0,0 11,8A3,3 0 0,0 8,5A3,3 0 0,0 5,8A3,3 0 0,0 8,11M16,11A3,3 0 0,0 19,8A3,3 0 0,0 16,5A3,3 0 0,0 13,8A3,3 0 0,0 16,11Z"/></svg>
+        Equipo
+      </div>
+    </div>
 
     <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js');
-            });
+
+// PEGA ESTO JUSTO DESPUÉS DE <script>
+const API_URL = "https://script.google.com/macros/s/AKfycbzLVAzXBQGFWdEQhM48iaYgJUMbPrbZ_BZK1yxTKKCBDkNcVXPFHrAFVpZ1LsSA6ceq0Q/exec";
+
+function llamarAPI(action, args = null) {
+  return fetch(API_URL, {
+    method: 'POST',
+    body: JSON.stringify({ action: action, args: args }),
+    headers: { "Content-Type": "text/plain;charset=utf-8" }
+  })
+  .then(res => res.json())
+  .then(json => {
+    if(json.success) return json.data;
+    throw new Error(json.error);
+  });
+}
+
+        
+      let clientasDataGlobal = []; // Aquí guardaremos los datos para filtrar rápido
+      let datosCargados = false;
+
+      document.addEventListener("DOMContentLoaded", function() {
+        // Cargar Resumen al abrir (Vuelve a pedir solo el Dashboard)
+        llamarAPI('obtenerDatosDashboard').then(actualizarResumen)
+      });
+
+      let metaMensualGlobal = 0;
+      let diasFaltantesGlobal = 0;
+
+      // NUEVA FUNCIÓN: Calcula los días restantes del mes ignorando domingos
+      function calcularDiasLaborablesRestantes() {
+        const hoy = new Date();
+        const año = hoy.getFullYear();
+        const mes = hoy.getMonth();
+        const ultimoDiaMes = new Date(año, mes + 1, 0).getDate();
+        
+        let diasLaborables = 0;
+        
+        for (let dia = hoy.getDate() + 1; dia <= ultimoDiaMes; dia++) {
+          let fechaTemp = new Date(año, mes, dia);
+          if (fechaTemp.getDay() !== 0) { // 0 es Domingo
+            diasLaborables++;
+          }
         }
+        return diasLaborables;
+      }
+
+      function actualizarResumen(datos) {
+        metaMensualGlobal = limpiarMonto(datos.meta);
+        diasFaltantesGlobal = calcularDiasLaborablesRestantes();
+        
+        document.getElementById('lbl-meta').innerText = formatearMoneda(metaMensualGlobal);
+        document.getElementById('lbl-faltan-dias').innerText = "Faltan " + diasFaltantesGlobal + " días";
+        
+        document.getElementById('header-count').style.display = 'block';
+        document.getElementById('header-count').innerText = diasFaltantesGlobal < 10 ? '0' + diasFaltantesGlobal : diasFaltantesGlobal;
+        document.getElementById('btn-calendario').style.display = 'flex';
+        filtrarResumen();
+      }
+
+      function filtrarResumen() {
+        const divRango = document.getElementById('resumen-rango-fechas');
+        const filtro = document.getElementById('resumen-filtro-fecha').value;
+        
+        if (filtro === 'rango') divRango.style.display = 'flex';
+        else divRango.style.display = 'none';
+
+        // Si aún no tenemos los datos históricos, los pedimos
+        if (clientasDataGlobal.length === 0) {
+          document.getElementById('loading-resumen').style.display = 'block';
+          document.getElementById('content-resumen').style.display = 'none';
+          
+          llamarAPI('obtenerDatosClientas').then(function(datos) {
+            clientasDataGlobal = datos;
+            datosCargados = true;
+            calcularResumenLocal();
+          }).obtenerDatosClientas();
+        } else {
+          calcularResumenLocal();
+        }
+      }
+
+      function calcularResumenLocal() {
+        const filtro = document.getElementById('resumen-filtro-fecha').value;
+        const hoy = new Date();
+        hoy.setHours(0,0,0,0);
+
+        let tTotal = 0, tPlin = 0, tYape = 0, tEfectivo = 0, tTarjeta = 0;
+        let cTotal = 0, cNuevas = 0, cAntiguas = 0, cUpsells = 0; 
+        
+        // Objeto para almacenar el rendimiento de cada chica
+        let rendimientoEquipo = {};
+
+        clientasDataGlobal.forEach(item => {
+          let partes = item.fecha.split(" ")[0].split("/");
+          let fechaFila = new Date(partes[2], partes[1]-1, partes[0]); // Día/Mes/Año
+          fechaFila.setHours(0,0,0,0);
+
+          let coincide = false;
+          let diffDias = Math.round((hoy.getTime() - fechaFila.getTime()) / (1000 * 60 * 60 * 24));
+
+          if (filtro === 'hoy') { coincide = diffDias === 0; }
+          else if (filtro === 'ayer') { coincide = diffDias === 1; }
+          else if (filtro === 'semana') { coincide = diffDias >= 0 && diffDias <= 7; }
+          else if (filtro === '14dias') { coincide = diffDias >= 0 && diffDias <= 14; }
+          else if (filtro === '30dias') { coincide = diffDias >= 0 && diffDias <= 30; }
+          else if (filtro === 'este_mes') {
+             coincide = fechaFila.getMonth() === hoy.getMonth() && fechaFila.getFullYear() === hoy.getFullYear();
+          } else if (filtro === 'mes_pasado') {
+             let m = hoy.getMonth() === 0 ? 11 : hoy.getMonth() - 1;
+             let a = hoy.getMonth() === 0 ? hoy.getFullYear() - 1 : hoy.getFullYear();
+             coincide = fechaFila.getMonth() === m && fechaFila.getFullYear() === a;
+          } else if (filtro === 'rango') {
+             let iInicio = document.getElementById('resumen-fecha-inicio').value;
+             let iFin = document.getElementById('resumen-fecha-fin').value;
+             if (iInicio && iFin) {
+               let dInicio = new Date(iInicio + "T00:00:00");
+               let dFin = new Date(iFin + "T23:59:59");
+               coincide = fechaFila >= dInicio && fechaFila <= dFin;
+             } else if (iInicio) {
+               let dInicio = new Date(iInicio + "T00:00:00");
+               coincide = fechaFila.getTime() === dInicio.getTime();
+             }
+          }
+
+          if (coincide) {
+            let monto = limpiarMonto(item.total);
+            tTotal += monto;
+            cTotal++;
+
+            // Agrupar Métodos de Pago
+            let met = (item.metodo || "").toUpperCase();
+            if (met.includes('PLIN')) tPlin += monto;
+            else if (met.includes('YAPE')) tYape += monto;
+            else if (met.includes('EFECTIVO')) tEfectivo += monto;
+            else if (met.includes('TARJETA') || met.includes('CREDITO') || met.includes('DEBITO')) tTarjeta += monto;
+
+            // Agrupar Estados de Clientas
+            let est = (item.estado || "").toUpperCase();
+            if (est.includes('NUEVA')) cNuevas++;
+            else if (est.includes('ANTIGUA')) cAntiguas++;
+            
+            // Registrar atenciones por manicurista para la nueva tarjeta
+            let nombre = item.manicurista ? item.manicurista.trim() : "Sin asignar";
+            nombre = nombre.charAt(0).toUpperCase() + nombre.slice(1).toLowerCase();
+            
+            if (!rendimientoEquipo[nombre]) {
+              rendimientoEquipo[nombre] = { clientas: 0, upsells: 0 };
+            }
+            rendimientoEquipo[nombre].clientas++;
+
+            // Contar Up Selling
+            let comisionStr = (item.comisionExtra || "").toUpperCase();
+            if (comisionStr.includes("UP SELLING")) {
+              cUpsells++;
+              rendimientoEquipo[nombre].upsells++;
+            }
+          }
+        });
+
+        // Actualizar los textos de la interfaz con formato elegante
+        document.getElementById('loading-resumen').style.display = 'none';
+        document.getElementById('content-resumen').style.display = 'block';
+
+        document.getElementById('lbl-hoy').innerText = formatearMoneda(tTotal);
+        document.getElementById('lbl-mes').innerText = formatearMoneda(tTotal); 
+
+        document.getElementById('lbl-plin').innerText = formatearMoneda(tPlin);
+        document.getElementById('lbl-yape').innerText = formatearMoneda(tYape);
+        document.getElementById('lbl-efectivo').innerText = formatearMoneda(tEfectivo);
+        document.getElementById('lbl-tcredito').innerText = formatearMoneda(tTarjeta);
+
+        // 1. Inyección de valores numéricos
+        document.getElementById('lbl-clientas-total').innerText = cTotal;
+        document.getElementById('lbl-clientas-nuevas').innerText = cNuevas;
+        document.getElementById('lbl-clientas-recurrentes').innerText = cAntiguas;
+        document.getElementById('lbl-clientas-upselling').innerText = cUpsells; 
+
+        // 2. Cálculo de Porcentajes (Ratios)
+        let pctNuevas = cTotal > 0 ? Math.round((cNuevas / cTotal) * 100) : 0;
+        let pctRecurrentes = cTotal > 0 ? Math.round((cAntiguas / cTotal) * 100) : 0;
+        let pctUpsells = cTotal > 0 ? Math.round((cUpsells / cTotal) * 100) : 0; 
+
+        // 3. Inyección de porcentajes en la interfaz
+        document.getElementById('lbl-pct-nuevas').innerText = pctNuevas + '%';
+        document.getElementById('lbl-pct-recurrentes').innerText = pctRecurrentes + '%';
+        document.getElementById('lbl-pct-upselling').innerText = pctUpsells + '% del total';
+
+        // 4. Actualización de Meta y Barra
+        let pct = metaMensualGlobal > 0 ? (tTotal / metaMensualGlobal) * 100 : 0;
+        let pctInt = pct > 100 ? 100 : pct.toFixed(0);
+        document.getElementById('lbl-porcentaje').innerText = pctInt + '%';
+        document.getElementById('bar-progreso').style.width = pctInt + '%';
+
+        // 5. DIBUJAR NUEVA TARJETA DE RENDIMIENTO POR EQUIPO
+        const listaRendimiento = document.getElementById('lista-rendimiento-equipo');
+        listaRendimiento.innerHTML = '';
+        
+        let rankingNombres = Object.keys(rendimientoEquipo).sort((a,b) => rendimientoEquipo[b].upsells - rendimientoEquipo[a].upsells);
+        
+        rankingNombres.forEach(nombre => {
+          let datos = rendimientoEquipo[nombre];
+          let conversion = datos.clientas > 0 ? Math.round((datos.upsells / datos.clientas) * 100) : 0;
+          let colorUpsell = datos.upsells > 0 ? '#FF2D55' : 'var(--text-sec)';
+          
+          listaRendimiento.innerHTML += `
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 0.5px solid #E5E5EA;">
+              <div>
+                <div style="font-size: 15px; font-weight: 600;">${nombre}</div>
+                <div style="font-size: 12px; color: var(--text-sec); margin-top: 3px;">${datos.clientas} clientas atendidas</div>
+              </div>
+              <div style="text-align: right;">
+                <div style="font-size: 15px; font-weight: 700; color: ${colorUpsell};">${datos.upsells} logrados</div>
+                <div style="font-size: 11px; font-weight: 700; color: var(--accent); background: rgba(0,122,255,0.08); display: inline-block; padding: 3px 8px; border-radius: 6px; margin-top: 4px;">${conversion}% Conv.</div>
+              </div>
+            </div>
+          `;
+        });
+        
+        if (rankingNombres.length === 0) {
+           listaRendimiento.innerHTML = '<div class="empty-state" style="padding: 10px 0;">No hay datos en este periodo</div>';
+        }
+      }
+
+      function cambiarPestana(idVista, titulo, evento) {
+        document.getElementById('header-title').innerText = titulo;
+        
+        // LÓGICA DEL CONTADOR SUPERIOR DERECHO
+        if (idVista === 'clientas') {
+          document.getElementById('header-count').style.display = 'block';
+          if (datosCargados) filtrarClientas(); 
+        } else if (idVista === 'resumen') {
+          document.getElementById('header-count').style.display = 'block';
+          document.getElementById('header-count').innerText = diasFaltantesGlobal < 10 ? '0' + diasFaltantesGlobal : diasFaltantesGlobal;
+        } else {
+          document.getElementById('header-count').style.display = 'none';
+        }
+
+        let vistas = document.querySelectorAll('.view-container');
+        vistas.forEach(vista => vista.classList.remove('active'));
+        document.getElementById('view-' + idVista).classList.add('active');
+
+        let tabs = document.querySelectorAll('.tab-item');
+        tabs.forEach(tab => tab.classList.remove('active'));
+        evento.currentTarget.classList.add('active');
+
+        if(idVista === 'clientas' && !datosCargados) {
+          document.getElementById('loading-clientas').style.display = 'block';
+          llamarAPI('obtenerDatosClientas').then(function(datos) {
+              clientasDataGlobal = datos;
+              datosCargados = true;
+              document.getElementById('loading-clientas').style.display = 'none';
+              filtrarClientas(); 
+          });
+        }
+        
+        if(idVista === 'facturacion') {
+          cargarFacturacion();
+        }
+
+        if(idVista === 'comisiones') {
+          if (!datosCargados) {
+             llamarAPI('obtenerDatosClientas').then(function(datos) {
+                clientasDataGlobal = datos;
+                datosCargados = true;
+                filtrarEquipo();
+             }).obtenerDatosClientas();
+          } else {
+             filtrarEquipo();
+          }
+          document.getElementById('header-count').style.display = 'none'; // Ocultamos el contador
+        }
+        if(idVista === 'gastos') {
+          cargarGastosBase();
+          document.getElementById('header-count').style.display = 'none';
+        }
+        // --- Dentro de cambiarPestana ---
+const btnCal = document.getElementById('btn-calendario');
+
+if (idVista === 'resumen' || idVista === 'clientas') {
+  btnCal.style.display = 'flex';
+} else {
+  btnCal.style.display = 'none';
+}
+      }
+
+      // LÓGICA DE FILTRADO Y BÚSQUEDA
+      function filtrarClientas() {
+        const texto = document.getElementById('buscador').value.toLowerCase();
+        const filtroFecha = document.getElementById('filtro-fecha').value;
+        const filtroStaff = document.getElementById('filtro-staff').value; 
+        const lista = document.getElementById('lista-clientas');
+        const divRango = document.getElementById('rango-fechas');
+        
+        lista.innerHTML = ''; 
+        let resultados = 0;
+
+        // Mostrar u ocultar los inputs de fechas específicos si seleccionó "rango"
+        if (filtroFecha === 'rango') {
+          divRango.style.display = 'flex';
+        } else {
+          divRango.style.display = 'none';
+        }
+
+        const hoy = new Date();
+        hoy.setHours(0,0,0,0); // Limpiamos la hora para comparar solo días exactos
+
+        clientasDataGlobal.forEach((item, indexArray) => {
+          const contenidoFila = `${item.cliente} ${item.servicios} ${item.manicurista} ${item.metodo} ${item.estado} ${item.fecha} ${item.comisionExtra}`.toLowerCase();
+          let coincideTexto = texto === '' || contenidoFila.includes(texto);
+          let coincideFecha = true;
+          
+          // <-- NUEVO BLOQUE DE LÓGICA DE STAFF -->
+          let coincideStaff = true;
+          if (filtroStaff !== 'todas') {
+            coincideStaff = item.manicurista.toLowerCase().includes(filtroStaff);
+          }
+
+          if (filtroFecha !== 'todo') {
+            let partesFechaStr = item.fecha.split(" ")[0].split("/"); 
+            if (partesFechaStr.length === 3) {
+              // Tu Google Form guarda como DD/MM/YYYY
+              let fechaFila = new Date(partesFechaStr[2], partesFechaStr[1] - 1, partesFechaStr[0]);
+              fechaFila.setHours(0,0,0,0);
+
+              if (filtroFecha === 'hoy') {
+                coincideFecha = fechaFila.getTime() === hoy.getTime();
+              } else if (filtroFecha === 'ayer') {
+                let ayer = new Date();
+                ayer.setDate(hoy.getDate() - 1);
+                ayer.setHours(0,0,0,0);
+                coincideFecha = fechaFila.getTime() === ayer.getTime();
+              } else if (filtroFecha === '3dias') {
+                let limite = new Date();
+                limite.setDate(hoy.getDate() - 3);
+                limite.setHours(0,0,0,0);
+                coincideFecha = fechaFila >= limite && fechaFila <= hoy;
+              } else if (filtroFecha === 'semana') {
+                let diffTime = Math.abs(hoy - fechaFila);
+                let diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+                coincideFecha = diffDays <= 7;
+              } else if (filtroFecha === '30dias') {
+                let limite = new Date();
+                limite.setDate(hoy.getDate() - 30);
+                limite.setHours(0,0,0,0);
+                coincideFecha = fechaFila >= limite && fechaFila <= hoy;
+              } else if (filtroFecha === 'este_mes') {
+                coincideFecha = fechaFila.getMonth() === hoy.getMonth() && fechaFila.getFullYear() === hoy.getFullYear();
+              } else if (filtroFecha === 'mes_pasado') {
+                let mesActual = hoy.getMonth(); // 0 a 11 (Enero a Diciembre)
+                let anioActual = hoy.getFullYear();
+                
+                // Calculamos cuál fue el mes pasado
+                let mesPasado = mesActual === 0 ? 11 : mesActual - 1;
+                let anioMesPasado = mesActual === 0 ? anioActual - 1 : anioActual;
+                
+                coincideFecha = fechaFila.getMonth() === mesPasado && fechaFila.getFullYear() === anioMesPasado;
+              } else if (filtroFecha === 'rango') {
+                let inputInicio = document.getElementById('fecha-inicio').value;
+                let inputFin = document.getElementById('fecha-fin').value;
+                
+                if (inputInicio && inputFin) {
+                  let dateInicio = new Date(inputInicio + "T00:00:00");
+                  let dateFin = new Date(inputFin + "T23:59:59");
+                  coincideFecha = fechaFila >= dateInicio && fechaFila <= dateFin;
+                } else if (inputInicio) {
+                  let dateInicio = new Date(inputInicio + "T00:00:00");
+                  coincideFecha = fechaFila.getTime() === dateInicio.getTime();
+                } else {
+                  coincideFecha = false; 
+                }
+              }
+            }
+          }
+
+          if (coincideTexto && coincideFecha && coincideStaff) {
+            resultados++;
+            const card = document.createElement('div');
+            card.className = 'client-card';
+            card.style.cursor = 'pointer'; // Manito de clic
+            card.setAttribute('onclick', `abrirModalEdicion(${indexArray})`); // Acción al tocar
+            card.innerHTML = `
+              <div class="client-header">
+                <h3 class="client-name">${item.cliente || 'Sin Nombre'}</h3>
+                <span class="client-total">${item.total}</span>
+              </div>
+              <p class="client-detail"><strong>Servicios:</strong> ${item.servicios}</p>
+              <p class="client-detail"><strong>Fecha:</strong> ${item.fecha}</p>
+              <div>
+                <span class="badge badge-metodo">${item.metodo}</span>
+                <span class="badge badge-staff">${item.manicurista}</span>
+                ${item.estado ? `<span class="badge" style="background:#E5E5EA;">${item.estado}</span>` : ''}
+                ${item.comisionExtra ? `<span class="badge" style="background:#FFE5E5; color:#FF3B30;">Extra: ${item.comisionExtra}</span>` : ''}
+              </div>
+            `;
+            lista.appendChild(card);
+          }
+        });
+
+        if (resultados === 0) {
+          lista.innerHTML = '<div class="empty-state">No hay clientas que coincidan con estos filtros.</div>';
+        }
+
+        // ACTUALIZAR EL NÚMERO EN EL ENCABEZADO
+        let cantidadFormateada = resultados < 10 ? '0' + resultados : resultados;
+        document.getElementById('header-count').innerText = cantidadFormateada;
+        
+      }
+
+      let facturacionDataGlobal = [];
+
+      function cargarFacturacion() {
+        if (facturacionDataGlobal.length === 0) {
+          llamarAPI('obtenerDatosClientas').then(function(datos) {
+            facturacionDataGlobal = datos;
+            mostrarFacturacion();
+          }).obtenerDatosFacturacion();
+        } else {
+          mostrarFacturacion();
+        }
+      }
+
+      function limpiarMonto(texto) {
+        if (!texto) return 0;
+        let str = texto.toString().replace(/[S\/\s]/g, ''); 
+        
+        let lastComma = str.lastIndexOf(',');
+        let lastDot = str.lastIndexOf('.');
+
+        // Si tiene ambos (Ej: 1.103,00)
+        if (lastComma > -1 && lastDot > -1) {
+          if (lastComma > lastDot) {
+            str = str.replace(/\./g, '').replace(',', '.');
+          } else {
+            str = str.replace(/,/g, '');
+          }
+        } 
+        // Si solo tiene coma
+        else if (lastComma > -1) {
+          // Si hay exactamente 3 dígitos después de la coma, asume que son miles (Ej: 32,000)
+          if (str.length - lastComma === 4) {
+             str = str.replace(/,/g, ''); 
+          } else {
+             str = str.replace(',', '.'); // Es decimal (Ej: 32,50)
+          }
+        } 
+        // Si solo tiene punto
+        else if (lastDot > -1) {
+          // Si hay exactamente 3 dígitos después del punto, asume que son miles (Ej: 32.000)
+          if (str.length - lastDot === 4) {
+             str = str.replace(/\./g, ''); 
+          }
+        }
+        return parseFloat(str) || 0;
+      }
+
+      // Función inteligente para formatear moneda sin .00 innecesarios
+      function formatearMoneda(valor) {
+        if (Number.isInteger(valor)) {
+          return "S/. " + valor.toLocaleString('es-PE'); // Sin decimales
+        } else {
+          return "S/. " + valor.toLocaleString('es-PE', {minimumFractionDigits: 2, maximumFractionDigits: 2}); // Con decimales
+        }
+      }
+
+      function mostrarFacturacion() {
+        const filtro = document.getElementById('fact-filtro-fecha').value;
+        const lista = document.getElementById('lista-facturacion');
+        const divRango = document.getElementById('fact-rango-fechas');
+        lista.innerHTML = '';
+
+        // Mostrar/Ocultar los calendarios
+        if (filtro === 'rango') {
+          divRango.style.display = 'flex';
+        } else {
+          divRango.style.display = 'none';
+        }
+
+        let tTotal = 0, tClientes = 0, tPlin = 0, tTarjeta = 0, tEfectivo = 0;
+        const hoy = new Date(); 
+        hoy.setHours(0,0,0,0);
+
+        facturacionDataGlobal.forEach(item => {
+          let partes = item.fecha.split("/");
+          let fechaFila = new Date(partes[2], partes[0]-1, partes[1]);
+          fechaFila.setHours(0,0,0,0);
+
+          let coincide = false;
+          let diffDias = Math.round((hoy.getTime() - fechaFila.getTime()) / (1000 * 60 * 60 * 24));
+
+          if (filtro === 'todo') {
+            coincide = diffDias >= 0; 
+          } else if (filtro === 'hoy') {
+            coincide = diffDias === 0;
+          } else if (filtro === 'ayer') {
+            coincide = diffDias === 1;
+          } else if (filtro === 'semana') {
+             coincide = diffDias >= 0 && diffDias <= 7;
+          } else if (filtro === 'este_mes') {
+             coincide = fechaFila.getMonth() === hoy.getMonth() && fechaFila.getFullYear() === hoy.getFullYear();
+          } else if (filtro === '30dias') {
+             coincide = diffDias >= 0 && diffDias <= 30;
+          } else if (filtro === 'mes_pasado') {
+             let m = hoy.getMonth() === 0 ? 11 : hoy.getMonth() - 1;
+             let a = hoy.getMonth() === 0 ? hoy.getFullYear() - 1 : hoy.getFullYear();
+             coincide = fechaFila.getMonth() === m && fechaFila.getFullYear() === a;
+          } else if (filtro === 'rango') {
+             let inputInicio = document.getElementById('fact-fecha-inicio').value;
+             let inputFin = document.getElementById('fact-fecha-fin').value;
+             
+             if (inputInicio && inputFin) {
+               let dateInicio = new Date(inputInicio + "T00:00:00");
+               let dateFin = new Date(inputFin + "T23:59:59");
+               coincide = fechaFila >= dateInicio && fechaFila <= dateFin;
+             } else if (inputInicio) {
+               let dateInicio = new Date(inputInicio + "T00:00:00");
+               coincide = fechaFila.getTime() === dateInicio.getTime();
+             }
+          }
+
+          if (coincide) {
+            let montoTotal = limpiarMonto(item.total);
+            let numClientes = parseInt(item.clientes) || 0;
+            
+            if (montoTotal === 0 && numClientes === 0 && filtro !== 'hoy' && filtro !== 'ayer') return;
+
+            tTotal += montoTotal;
+            tClientes += numClientes;
+            tPlin += (limpiarMonto(item.plin) + limpiarMonto(item.yape));
+            tTarjeta += limpiarMonto(item.tarjeta);
+            tEfectivo += limpiarMonto(item.efectivo);
+
+            // Usamos nuestro nuevo formateador inteligente
+            let montoVisual = formatearMoneda(montoTotal);
+
+            const row = document.createElement('div');
+            row.style = "background: white; padding: 15px; border-bottom: 0.5px solid #E5E5EA; display: flex; justify-content: space-between; align-items: center;";
+            row.innerHTML = `
+              <div>
+                <div style="font-size: 15px; font-weight: 600;">${item.fecha}</div>
+                <div style="font-size: 12px; color: var(--text-sec);">${item.clientes} clientas</div>
+              </div>
+              <div style="font-size: 17px; font-weight: 700; color: var(--text-main);">${montoVisual}</div>
+            `;
+            lista.appendChild(row);
+          }
+        });
+
+        // Actualizar Card Azul con el formateador inteligente
+        document.getElementById('fact-total').innerText = formatearMoneda(tTotal);
+        document.getElementById('fact-clientes-total').innerText = tClientes < 10 ? '0' + tClientes : tClientes;
+        document.getElementById('fact-plin').innerText = formatearMoneda(tPlin);
+        document.getElementById('fact-tarjeta').innerText = formatearMoneda(tTarjeta);
+        document.getElementById('fact-efectivo').innerText = formatearMoneda(tEfectivo);
+      }
+
+
+      // ==========================================
+      // FUNCIONES DEL POP-UP DE EDICIÓN
+      // ==========================================
+      function abrirModalEdicion(index) {
+        const item = clientasDataGlobal[index];
+        
+        document.getElementById('edit-index').value = index;
+        document.getElementById('edit-fila').value = item.fila;
+        document.getElementById('edit-cliente').value = item.cliente;
+        document.getElementById('edit-servicios').value = item.servicios;
+        
+        // Seleccionamos los valores de los desplegables
+        document.getElementById('edit-metodo').value = item.metodo.toUpperCase();
+        
+        // Aseguramos que la primera letra sea mayúscula para coincidir con las opciones
+        let manicuristaFormato = item.manicurista.charAt(0).toUpperCase() + item.manicurista.slice(1).toLowerCase();
+        document.getElementById('edit-manicurista').value = manicuristaFormato;
+
+        document.getElementById('edit-estado').value = item.estado || "";
+        document.getElementById('edit-comision').value = item.comisionExtra || "";
+        document.getElementById('edit-total').value = item.total;
+
+        // CONVERSIÓN DE FECHA PARA EL CALENDARIO DE iOS
+        try {
+          let partes = item.fecha.split(" ");
+          let fechaArr = partes[0].split("/"); // [Día, Mes, Año]
+          let horaArr = partes[1].split(":");  // [Hora, Minuto, Segundo]
+          
+          let yyyy = fechaArr[2];
+          let mm = fechaArr[1].padStart(2, '0');
+          let dd = fechaArr[0].padStart(2, '0');
+          let hh = horaArr[0].padStart(2, '0');
+          let mins = horaArr[1].padStart(2, '0');
+          
+          // El input datetime-local necesita este formato exacto: YYYY-MM-DDTHH:mm
+          document.getElementById('edit-fecha').value = `${yyyy}-${mm}-${dd}T${hh}:${mins}`;
+        } catch(e) {
+          document.getElementById('edit-fecha').value = ""; // Prevenir errores si la fecha viene vacía
+        }
+
+        const modal = document.getElementById('modal-edicion');
+        modal.style.display = 'flex';
+        setTimeout(() => modal.classList.add('active'), 10);
+      }
+
+      function cerrarModalEdicion(e) {
+        // Cierra si tocas cancelar o si tocas el fondo oscuro (fuera de la tarjeta blanca)
+        if (e && e.target !== document.getElementById('modal-edicion')) return;
+        const modal = document.getElementById('modal-edicion');
+        modal.classList.remove('active');
+        setTimeout(() => modal.style.display = 'none', 300); // Espera que termine la animación
+      }
+
+      function guardarEdicion() {
+        const btn = document.getElementById('btn-guardar-edicion');
+        btn.innerText = "Guardando...";
+        btn.disabled = true;
+
+        const index = document.getElementById('edit-index').value;
+        
+        // CONVERSIÓN DE FECHA PARA GOOGLE SHEET
+        let inputFecha = document.getElementById('edit-fecha').value;
+        let fechaGoogleSheet = inputFecha; 
+        if (inputFecha) {
+          let dateObj = new Date(inputFecha);
+          let d = dateObj.getDate();
+          let m = dateObj.getMonth() + 1; // Los meses en JS empiezan en 0
+          let y = dateObj.getFullYear();
+          let hr = dateObj.getHours();
+          let mn = String(dateObj.getMinutes()).padStart(2, '0');
+          // Formato: 31/3/2026 21:45:00
+          fechaGoogleSheet = `${d}/${m}/${y} ${hr}:${mn}:00`;
+        }
+
+        const datosEditados = {
+          fila: document.getElementById('edit-fila').value,
+          fecha: fechaGoogleSheet,
+          cliente: document.getElementById('edit-cliente').value,
+          servicios: document.getElementById('edit-servicios').value,
+          metodo: document.getElementById('edit-metodo').value,
+          manicurista: document.getElementById('edit-manicurista').value,
+          total: document.getElementById('edit-total').value,
+          estado: document.getElementById('edit-estado').value,
+          comisionExtra: document.getElementById('edit-comision').value
+        };
+
+        llamarAPI('actualizarClienta', datosEditados).then(function(res) {
+            btn.innerText = "Guardar";
+            btn.disabled = false;
+            cerrarModalEdicion();
+
+            clientasDataGlobal[index] = datosEditados;
+            filtrarClientas();
+
+            facturacionDataGlobal = []; 
+        });
+      }
+
+        // ==========================================
+      // FUNCIONES DEL POP-UP DE CONFIGURACIÓN
+      // ==========================================
+      function abrirModalConfig() {
+        // Ponemos la meta actual en el input para que no parta de cero
+        document.getElementById('edit-meta').value = metaMensualGlobal;
+        
+        const modal = document.getElementById('modal-configuracion');
+        modal.style.display = 'flex';
+        setTimeout(() => modal.classList.add('active'), 10);
+      }
+
+      function cerrarModalConfig(e) {
+        if (e && e.target !== document.getElementById('modal-configuracion')) return;
+        const modal = document.getElementById('modal-configuracion');
+        modal.classList.remove('active');
+        setTimeout(() => modal.style.display = 'none', 300);
+      }
+
+      function guardarConfiguracion() {
+        const btn = document.getElementById('btn-guardar-config');
+        btn.innerText = "Guardando...";
+        btn.disabled = true;
+
+        let nuevaMetaTexto = document.getElementById('edit-meta').value;
+        let nuevaMetaNumero = parseFloat(nuevaMetaTexto) || 0;
+
+        llamarAPI('actualizarMetaMensual', nuevaMetaNumero).then(function() {
+            btn.innerText = "Guardar";
+            btn.disabled = false;
+            cerrarModalConfig();
+
+            // Actualizamos la variable local e inyectamos el nuevo número en pantalla
+            metaMensualGlobal = nuevaMetaNumero;
+            document.getElementById('lbl-meta').innerText = formatearMoneda(metaMensualGlobal);
+            
+            // Recalculamos el resumen (esto actualizará automáticamente la barra de progreso)
+            calcularResumenLocal(); 
+        });
+      }
+
+      // ==========================================
+      // FUNCIONES DE EQUIPO Y COMISIONES
+      // ==========================================
+      let textoCopiarComisiones = "";
+      let textoCopiarUpSelling = "";
+
+      // Función rápida para que las fechas se vean bonitas (Ej: 04/04/2026)
+      function formatoFechaCorta(d) {
+        if (!d || isNaN(d)) return "--/--/----";
+        return d.getDate().toString().padStart(2, '0') + '/' + (d.getMonth() + 1).toString().padStart(2, '0') + '/' + d.getFullYear();
+      }
+
+      function filtrarEquipo() {
+        const filtroFecha = document.getElementById('equipo-filtro-fecha').value;
+        const porcentaje = parseFloat(document.getElementById('equipo-porcentaje').value) / 100;
+        const divRango = document.getElementById('equipo-rango-fechas');
+        
+        if (filtroFecha === 'rango') divRango.style.display = 'flex';
+        else divRango.style.display = 'none';
+
+        // Pre-llenamos el objeto con TODAS las chicas, así siempre aparecen en la lista (incluso con S/ 0 o 0 logrados)
+        let equipo = {
+          "Mari": { ventasTotales: 0, upsells: 0 },
+          "Alondra": { ventasTotales: 0, upsells: 0 },
+          "Darcy": { ventasTotales: 0, upsells: 0 },
+          "Elliani": { ventasTotales: 0, upsells: 0 },
+          "Fressia": { ventasTotales: 0, upsells: 0 },
+          "Carmen": { ventasTotales: 0, upsells: 0 }
+        };
+
+        const hoy = new Date();
+        hoy.setHours(0,0,0,0);
+        
+        // Calcular fechas exactas para el reporte y WhatsApp
+        let dInicio = new Date(hoy);
+        let dFin = new Date(hoy);
+        
+        let diaSemana = hoy.getDay() === 0 ? 7 : hoy.getDay(); 
+        let lunesEstaSemana = new Date(hoy);
+        lunesEstaSemana.setDate(hoy.getDate() - diaSemana + 1);
+        lunesEstaSemana.setHours(0,0,0,0);
+        
+        let domingoEstaSemana = new Date(lunesEstaSemana);
+        domingoEstaSemana.setDate(lunesEstaSemana.getDate() + 6);
+
+        let lunesSemanaPasada = new Date(lunesEstaSemana);
+        lunesSemanaPasada.setDate(lunesEstaSemana.getDate() - 7);
+        let domingoSemanaPasada = new Date(lunesEstaSemana);
+        domingoSemanaPasada.setDate(lunesEstaSemana.getDate() - 1);
+
+        if (filtroFecha === 'esta_semana') {
+          dInicio = lunesEstaSemana; dFin = domingoEstaSemana;
+        } else if (filtroFecha === 'semana_pasada') {
+          dInicio = lunesSemanaPasada; dFin = domingoSemanaPasada;
+        } else if (filtroFecha === 'este_mes') {
+          dInicio = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+          dFin = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0);
+        } else if (filtroFecha === 'mes_pasado') {
+          let m = hoy.getMonth() === 0 ? 11 : hoy.getMonth() - 1;
+          let a = hoy.getMonth() === 0 ? hoy.getFullYear() - 1 : hoy.getFullYear();
+          dInicio = new Date(a, m, 1);
+          dFin = new Date(a, m + 1, 0);
+        } else if (filtroFecha === 'rango') {
+          let iInicio = document.getElementById('equipo-fecha-inicio').value;
+          let iFin = document.getElementById('equipo-fecha-fin').value;
+          if (iInicio) dInicio = new Date(iInicio + "T00:00:00");
+          if (iFin) dFin = new Date(iFin + "T23:59:59");
+        }
+
+        // Mostrar las fechas en el HTML
+        document.getElementById('equipo-rango-fechas-lbl').innerText = ` ${formatoFechaCorta(dInicio)} - ${formatoFechaCorta(dFin)}`;
+
+        clientasDataGlobal.forEach(item => {
+          let partes = item.fecha.split(" ")[0].split("/");
+          let fechaFila = new Date(partes[2], partes[1]-1, partes[0]);
+          fechaFila.setHours(0,0,0,0);
+
+          // Evaluamos si la fecha de la clienta está dentro del rango
+          let coincide = (fechaFila >= dInicio && fechaFila <= dFin);
+
+          if (coincide) {
+            let nombre = item.manicurista ? item.manicurista.trim() : "";
+            if(nombre) {
+              nombre = nombre.charAt(0).toUpperCase() + nombre.slice(1).toLowerCase();
+              if (!equipo[nombre]) {
+                equipo[nombre] = { ventasTotales: 0, upsells: 0 }; // Por si añades a alguien nuevo
+              }
+
+              equipo[nombre].ventasTotales += limpiarMonto(item.total);
+
+              let comisionStr = (item.comisionExtra || "").toUpperCase();
+              if (comisionStr.includes("UP SELLING")) {
+                equipo[nombre].upsells++;
+              }
+            }
+          }
+        });
+
+        // ================= DIBUJAR LISTAS =================
+        const listaCom = document.getElementById('lista-comisiones');
+        const listaUp = document.getElementById('lista-upselling');
+        listaCom.innerHTML = '';
+        listaUp.innerHTML = '';
+
+        let totalComisionesPeriodo = 0;
+        let totalUpsellsGlobal = 0;
+        textoCopiarComisiones = `💰 *PAGO DE COMISIONES (${document.getElementById('equipo-porcentaje').value}%)*\n🗓️ Del ${formatoFechaCorta(dInicio)} al ${formatoFechaCorta(dFin)}\n\n`;
+        textoCopiarUpSelling = `🚀 *UP SELLING* 🤑💕\n🗓️ Del ${formatoFechaCorta(dInicio)} al ${formatoFechaCorta(dFin)}\n\n`;
+
+        // 1. DIBUJAR COMISIONES (Orden Alfabético)
+        Object.keys(equipo).sort().forEach(nombre => {
+          let datos = equipo[nombre];
+          let comisionCalculada = datos.ventasTotales * porcentaje;
+          totalComisionesPeriodo += comisionCalculada;
+
+          listaCom.innerHTML += `
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 0.5px solid #E5E5EA;">
+              <div>
+                <div style="font-size: 15px; font-weight: 600;">${nombre}</div>
+                <div style="font-size: 11px; color: var(--text-sec);">Facturado: ${formatearMoneda(datos.ventasTotales)}</div>
+              </div>
+              <div style="font-size: 16px; font-weight: 700; color: var(--success);">${formatearMoneda(comisionCalculada)}</div>
+            </div>
+          `;
+          textoCopiarComisiones += `💅 ${nombre}: *${formatearMoneda(comisionCalculada)}*\n`;
+        });
+
+        // Actualizar el monto total en el encabezado HTML y en WhatsApp
+        document.getElementById('equipo-total-comisiones').innerText = formatearMoneda(totalComisionesPeriodo);
+        textoCopiarComisiones += `\n💵 *TOTAL PAGADO: ${formatearMoneda(totalComisionesPeriodo)}*`;
+
+        // 2. DIBUJAR UP SELLING (Ordenado por quién tiene más)
+        let rankingArray = Object.keys(equipo).map(n => ({ nombre: n, upsells: equipo[n].upsells }));
+        rankingArray.sort((a,b) => b.upsells - a.upsells); // Orden de mayor a menor
+
+        rankingArray.forEach(item => {
+            totalUpsellsGlobal += item.upsells; // Sumamos al total global
+            let colorTexto = item.upsells > 0 ? '#FF2D55' : 'var(--text-sec)';
+            let fontWeight = item.upsells > 0 ? '700' : '500';
+            
+            listaUp.innerHTML += `
+              <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 0.5px solid #E5E5EA;">
+                <div style="font-size: 15px; font-weight: 600;">${item.nombre}</div>
+                <div style="font-size: 16px; font-weight: ${fontWeight}; color: ${colorTexto};">${item.upsells} logrados</div>
+              </div>
+            `;
+            textoCopiarUpSelling += `🔥 ${item.nombre}: *${item.upsells}*\n`;
+        });
+
+        // Actualizar el número total en la esquina de la tarjeta
+        document.getElementById('equipo-total-upselling').innerText = totalUpsellsGlobal;
+        textoCopiarUpSelling += `\n🚀 *TOTAL UP SELLING: ${totalUpsellsGlobal}*`;
+      }
+
+      function copiarTexto(tipo) {
+        let texto = tipo === 'comisiones' ? textoCopiarComisiones : textoCopiarUpSelling;
+        let spanId = tipo === 'comisiones' ? 'texto-btn-com' : 'texto-btn-up';
+        let spanEle = document.getElementById(spanId);
+        let textoOriginal = spanEle.innerText; // Guardamos el texto original
+        
+        // Método seguro para copiar en iOS sin mostrar alertas
+        const textarea = document.createElement('textarea');
+        textarea.value = texto;
+        document.body.appendChild(textarea);
+        textarea.select();
+        
+        try {
+          document.execCommand('copy');
+          // Cambiamos el texto del botón temporalmente para dar feedback visual
+          spanEle.innerText = '¡Copiado! ✓';
+          setTimeout(() => { spanEle.innerText = textoOriginal; }, 2000);
+        } catch (err) {
+          console.error("Error al copiar", err);
+        }
+        
+        document.body.removeChild(textarea);
+      }
+
+      // ==========================================
+      // FUNCIONES DE GASTOS
+      // ==========================================
+      let gastosDataGlobal = [];
+      let gastosCargados = false;
+
+      function cargarGastosBase() {
+        if (!gastosCargados) {
+          document.getElementById('loading-gastos').style.display = 'block';
+          llamarAPI('obtenerDatosClientas').then(function(datos) {
+            gastosDataGlobal = datos;
+            gastosCargados = true;
+            document.getElementById('loading-gastos').style.display = 'none';
+            mostrarGastos();
+          }).obtenerDatosGastos();
+        } else {
+          mostrarGastos();
+        }
+      }
+
+      function mostrarGastos() {
+        const filtroPersona = document.getElementById('gastos-filtro-persona').value;
+        const filtroTiempo = document.getElementById('gastos-filtro-tiempo').value;
+        const divRango = document.getElementById('gastos-rango-fechas');
+        const lista = document.getElementById('lista-gastos');
+        lista.innerHTML = '';
+        
+        divRango.style.display = (filtroTiempo === 'rango') ? 'flex' : 'none';
+
+        let deudaCarlos = 0;
+        let deudaMari = 0;
+        let totalGastadoPeriodo = 0;
+        
+        const hoy = new Date();
+        hoy.setHours(0,0,0,0);
+
+        // Rango de Semana (Lunes a Domingo)
+        let diaSem = hoy.getDay() === 0 ? 7 : hoy.getDay();
+        let lunes = new Date(hoy); lunes.setDate(hoy.getDate() - diaSem + 1);
+        let domingo = new Date(lunes); domingo.setDate(lunes.getDate() + 6);
+
+        gastosDataGlobal.forEach((item, index) => {
+          let montoLimpio = limpiarMonto(item.monto);
+          let estaDevuelto = item.devuelto.toUpperCase() === "SÍ" || item.devuelto.toUpperCase() === "SI";
+          
+          // 1. CÁLCULO DE DEUDAS (Siempre basado en "No devuelto", sin importar el filtro de tiempo)
+          if (!estaDevuelto) {
+            if (item.pagadoPor === "Carlos") deudaCarlos += montoLimpio;
+            if (item.pagadoPor === "Mari") deudaMari += montoLimpio;
+          }
+
+          // 2. LÓGICA DE FILTRADO PARA VISUALIZACIÓN Y TOTAL PERIODO
+          let partes = item.fecha.split(" ")[0].split("/");
+          let fFila = new Date(partes[2], partes[1]-1, partes[0]);
+          fFila.setHours(0,0,0,0);
+
+          let coincidePersona = (filtroPersona === 'todos' || item.pagadoPor === filtroPersona);
+          let coincideTiempo = false;
+
+          if (filtroTiempo === 'todo') coincideTiempo = true;
+          else if (filtroTiempo === 'esta_semana') coincideTiempo = (fFila >= lunes && fFila <= hoy);
+          else if (filtroTiempo === 'este_mes') coincideTiempo = (fFila.getMonth() === hoy.getMonth() && fFila.getFullYear() === hoy.getFullYear());
+          else if (filtroTiempo === 'mes_pasado') {
+             let m = hoy.getMonth() === 0 ? 11 : hoy.getMonth() - 1;
+             let a = hoy.getMonth() === 0 ? hoy.getFullYear() - 1 : hoy.getFullYear();
+             coincideTiempo = (fFila.getMonth() === m && fFila.getFullYear() === a);
+          } else if (filtroTiempo === 'rango') {
+             let iI = document.getElementById('gastos-fecha-inicio').value;
+             let iF = document.getElementById('gastos-fecha-fin').value;
+             if (iI && iF) coincideTiempo = (fFila >= new Date(iI + "T00:00:00") && fFila <= new Date(iF + "T23:59:59"));
+             else if (iI) coincideTiempo = (fFila.getTime() === new Date(iI + "T00:00:00").getTime());
+          }
+
+          if (coincidePersona && coincideTiempo) {
+            totalGastadoPeriodo += montoLimpio;
+            
+            let badgeStyle = estaDevuelto ? 'background:#E5E5EA; color:var(--text-sec);' : 'background:rgba(255,45,85,0.1); color:#FF2D55;';
+            let badgeText = estaDevuelto ? 'Pagado/Cuadrado' : 'Pendiente';
+            if(item.pagadoPor === "Caja") { badgeStyle = 'background:#E5E5EA; color:var(--text-main);'; badgeText = 'Gasto de Caja'; }
+
+            lista.innerHTML += `
+              <div class="card" style="padding: 16px; margin-bottom: 10px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                  <div style="font-weight: 600; font-size: 15px;">${item.descripcion}</div>
+                  <div style="font-weight: 700; font-size: 16px;">S/. ${montoLimpio.toFixed(2)}</div>
+                </div>
+                <div style="font-size: 12px; color: var(--text-sec); margin-bottom: 12px;">
+                  ${item.fecha.split(" ")[0]} • Pagó: <strong>${item.pagadoPor}</strong> en ${item.metodo}
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <span style="font-size: 10px; font-weight: 700; padding: 4px 8px; border-radius: 6px; ${badgeStyle}">${badgeText}</span>
+                  ${!estaDevuelto && item.pagadoPor !== "Caja" ? `<button onclick="marcarDevuelto(${index})" style="background:none; border:1px solid #E5E5EA; padding:4px 12px; border-radius:6px; font-size:11px; font-weight:600; color:#000;">Marcar Pagado</button>` : ''}
+                </div>
+              </div>
+            `;
+          }
+        });
+
+        // Actualizar la Tarjeta Negra Superior
+        document.getElementById('gasto-total-periodo').innerText = formatearMoneda(totalGastadoPeriodo);
+        document.getElementById('deuda-carlos').innerText = formatearMoneda(deudaCarlos);
+        document.getElementById('deuda-mari').innerText = formatearMoneda(deudaMari);
+        
+        if(lista.innerHTML === '') lista.innerHTML = '<div class="empty-state">No hay gastos que coincidan.</div>';
+      }
+
+      function marcarDevuelto(index) {
+        let item = gastosDataGlobal[index];
+        item.devuelto = "Sí";
+        mostrarGastos(); // Actualizar UI de inmediato
+        
+        llamarAPI('marcarGastoDevuelto', {fila: item.fila, estado: "Sí"});
+      }
+
+      function abrirModalGasto() {
+        document.getElementById('gasto-desc').value = "";
+        document.getElementById('gasto-monto').value = "";
+        const modal = document.getElementById('modal-gasto');
+        modal.style.display = 'flex';
+        setTimeout(() => modal.classList.add('active'), 10);
+      }
+
+      function cerrarModalGasto(e) {
+        if (e && e.target !== document.getElementById('modal-gasto')) return;
+        const modal = document.getElementById('modal-gasto');
+        modal.classList.remove('active');
+        setTimeout(() => modal.style.display = 'none', 300);
+      }
+
+      function guardarNuevoGasto() {
+        const desc = document.getElementById('gasto-desc').value;
+        const monto = document.getElementById('gasto-monto').value;
+        
+        if(!desc || !monto) { alert("Completa la descripción y el monto."); return; }
+
+        const btn = document.getElementById('btn-guardar-gasto');
+        btn.innerText = "Guardando..."; btn.disabled = true;
+
+        const hoy = new Date();
+        const fechaStr = hoy.getDate().toString().padStart(2, '0') + '/' + (hoy.getMonth()+1).toString().padStart(2, '0') + '/' + hoy.getFullYear() + ' ' + hoy.getHours() + ':' + hoy.getMinutes().toString().padStart(2, '0');
+
+        const nuevoGasto = {
+          fecha: fechaStr,
+          descripcion: desc,
+          monto: monto,
+          pagadoPor: document.getElementById('gasto-pagador').value,
+          metodo: document.getElementById('gasto-metodo').value
+        };
+
+        llamarAPI('registrarNuevoGasto', nuevoGasto).then(function() {
+          btn.innerText = "Guardar"; btn.disabled = false;
+          cerrarModalGasto();
+          gastosCargados = false; // Forzar recarga de la base de datos
+          cargarGastosBase();
+        });
+      }
+        // --- Nuevas funciones para el Calendario Nativo ---
+
+
+
+function manejarCambioFecha(fechaSeleccionada) {
+  if (!fechaSeleccionada) return;
+  
+  // Opcional: Si quieres que al elegir una fecha se filtre el resumen automáticamente:
+  const filtroSelect = document.getElementById('resumen-filtro-fecha');
+  const fechaInicio = document.getElementById('resumen-fecha-inicio');
+  const fechaFin = document.getElementById('resumen-fecha-fin');
+  
+  filtroSelect.value = 'rango';
+  fechaInicio.value = fechaSeleccionada;
+  fechaFin.value = fechaSeleccionada;
+  
+  // Activamos el filtro visualmente y calculamos
+  document.getElementById('resumen-rango-fechas').style.display = 'flex';
+  filtrarResumen();
+}
     </script>
-</body>
+  </body>
 </html>
