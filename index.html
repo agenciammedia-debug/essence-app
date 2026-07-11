@@ -5,6 +5,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <link rel="manifest" href="manifest.json">
     
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
@@ -585,16 +587,15 @@
 
     <script>
 
-// PEGA ESTO JUSTO DESPUÉS DE <script>
 const API_URL = "https://script.google.com/macros/s/AKfycbzLVAzXBQGFWdEQhM48iaYgJUMbPrbZ_BZK1yxTKKCBDkNcVXPFHrAFVpZ1LsSA6ceq0Q/exec";
 
 function llamarAPI(action, args = null) {
-  return fetch(API_URL, {
-    method: 'POST',
-    body: JSON.stringify({ action: action, args: args }),
-    headers: { "Content-Type": "text/plain;charset=utf-8" },
-    redirect: "follow" // <-- ESTA LÍNEA ES LA SOLUCIÓN
-  })
+  let url = API_URL + "?action=" + encodeURIComponent(action);
+  if (args) {
+    url += "&args=" + encodeURIComponent(JSON.stringify(args));
+  }
+  
+  return fetch(url)
   .then(res => res.json())
   .then(json => {
     if(json.success) return json.data;
