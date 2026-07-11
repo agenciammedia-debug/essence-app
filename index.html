@@ -590,25 +590,20 @@
 const API_URL = "https://script.google.com/macros/s/AKfycbzH-57QrNcXP7J_KoRUVmwG6ogVxEEweiRMeJXdDGIW3mc2wmeUpkkUUCrFPhU8ifqDBA/exec";
 
 function llamarAPI(action, args = null) {
-  return new Promise((resolve, reject) => {
-    // Si estamos en iPhone, Safari bloquea peticiones si no están bien autorizadas.
-    // Usaremos un "caché-busting" para obligar a Safari a refrescar la petición.
-    let url = API_URL + "?action=" + encodeURIComponent(action) + "&t=" + new Date().getTime();
-    if (args) url += "&args=" + encodeURIComponent(JSON.stringify(args));
-    
-    fetch(url, { method: 'GET', mode: 'no-cors' }) 
-    .then(() => {
-        // En modo no-cors no podemos leer el JSON, así que usamos un truco:
-        // Hacemos el fetch para avisarle a Google que cargue, y usamos una pequeña demora
-        // para que Google Apps Script procese la petición.
-        return fetch(url).then(res => res.json());
-    })
-    .then(data => resolve(data.data))
-    .catch(err => {
-        console.error("Error:", err);
-        reject(err);
+  // Añadimos una marca de tiempo aleatoria (?t=...) para que el iPhone 
+  // crea que es una página nueva y no cargue datos viejos de caché
+  let url = API_URL + "?action=" + encodeURIComponent(action) + "&t=" + new Date().getTime();
+  if (args) {
+    url += "&args=" + encodeURIComponent(JSON.stringify(args));
+  }
+  
+  return fetch(url, { mode: 'no-cors' }) // Safari en modo no-cors permite la ejecución
+    .then(() => fetch(url)) // Segunda pasada para obtener el JSON
+    .then(res => res.json())
+    .then(json => {
+      if(json.success) return json.data;
+      throw new Error(json.error);
     });
-  });
 }
 
         
