@@ -30,7 +30,7 @@
       }
 
       .header {
-        padding: 40px 20px 16px 20px;
+        padding: calc(env(safe-area-inset-top) + 16px) 20px 16px 20px;
         background-color: var(--bg-color);
         position: sticky; top: 0; z-index: 10;
       }
@@ -91,7 +91,14 @@
 
       /* Barra Inferior */
       .tab-bar {
-        position: fixed; bottom: 0; left: 0; width: 100%; background: var(--tab-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-top: 0.5px solid rgba(0,0,0,0.1); display: flex; justify-content: space-around; padding-top: 10px; padding-bottom: env(safe-area-inset-bottom, 20px); z-index: 100;
+        position: fixed; bottom: 0; left: 0; width: 100%; 
+        background: var(--tab-bg); 
+        backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); 
+        border-top: 0.5px solid rgba(0,0,0,0.1); 
+        display: flex; justify-content: space-around; 
+        padding-top: 10px; 
+        padding-bottom: calc(env(safe-area-inset-bottom) + 10px); /* Ajusta el espacio vacío */
+        z-index: 100;
       }
       .tab-item { display: flex; flex-direction: column; align-items: center; color: var(--text-sec); font-size: 10px; font-weight: 600; width: 25%; cursor: pointer; }
       .tab-item svg { width: 24px; height: 24px; margin-bottom: 4px; fill: currentColor; }
@@ -585,7 +592,8 @@ function llamarAPI(action, args = null) {
   return fetch(API_URL, {
     method: 'POST',
     body: JSON.stringify({ action: action, args: args }),
-    headers: { "Content-Type": "text/plain;charset=utf-8" }
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    redirect: "follow" // <-- ESTA LÍNEA ES LA SOLUCIÓN
   })
   .then(res => res.json())
   .then(json => {
