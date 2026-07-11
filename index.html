@@ -595,19 +595,11 @@ function llamarAPI(action, args = null) {
     url += "&args=" + encodeURIComponent(JSON.stringify(args));
   }
   
-  return fetch(url)
-    .then(res => res.text()) // Leemos texto primero por seguridad
-    .then(text => {
-      try {
-        let json = JSON.parse(text);
-        if(json.success) return json.data;
-        throw new Error(json.error);
-      } catch(err) {
-        // Si Google bloquea el acceso y manda un HTML, esto nos avisará en la pantalla
-        alert("Error de conexión con Google. Revisa los permisos de 'Cualquier persona'.");
-        console.error("Respuesta fallida de Google:", text);
-        throw err;
-      }
+  return fetch(url, { method: 'GET', mode: 'cors' }) // El modo 'cors' es clave
+    .then(res => res.json())
+    .then(json => {
+      if(json.success) return json.data;
+      throw new Error(json.error);
     });
 }
 
