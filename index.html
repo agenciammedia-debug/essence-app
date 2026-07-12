@@ -3,6 +3,7 @@
   <head>
     <base target="_top">
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
     <link rel="apple-touch-icon" href="icon-192.png">
@@ -587,27 +588,31 @@
 
     <script>
 
-const API_URL = "https://script.google.com/macros/s/AKfycbxJdIAJR5OvuYBq_bNwOIkEBUuXaYSuQE7uC3QIVuLsRQWnPW1SP8tFYKYqj-tP9d73/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbwRPIF993OnqZTnoKHUhutoSTQNKSmHnb7KT-DJHte5gTB53qPzGc6P18yTLOh1UNc_Vg/exec";
+
 
 function llamarAPI(action, args = null) {
-  let url = API_URL + "?action=" + encodeURIComponent(action);
-  if (args) url += "&args=" + encodeURIComponent(JSON.stringify(args));
-  
-  // Quitamos 'no-cors' porque es lo que bloquea la lectura del JSON
-  return fetch(url)
-    .then(res => {
-      if (!res.ok) throw new Error("Error de conexión");
-      return res.json();
-    })
-    .then(json => {
-      if(json.success) return json.data;
-      throw new Error("Error en Google Script");
-    })
-    .catch(err => {
-      console.error("Error:", err);
-      // Solo lanzamos alerta si realmente falla, para no molestar si solo es carga inicial
-      return null; 
-    });
+  return fetch(API_URL, {
+    method: 'POST',
+    // Usamos text/plain en lugar de application/json. 
+    // Esto evita que Safari haga la petición "preflight" (CORS) que causa el bloqueo.
+    headers: {
+      'Content-Type': 'text/plain;charset=utf-8',
+    },
+    body: JSON.stringify({ action: action, args: args })
+  })
+  .then(res => {
+    if (!res.ok) throw new Error("Error en la red");
+    return res.json();
+  })
+  .then(json => {
+    if (json.success) return json.data;
+    throw new Error(json.error);
+  })
+  .catch(err => {
+    console.error("Error al conectar con Google:", err);
+    return null; // Devolvemos null para que la app no colapse si falla un momento
+  });
 }
 
         
