@@ -587,29 +587,26 @@
 
     <script>
 
-const API_URL = "https://script.google.com/macros/s/AKfycbxdqzl__JgtLOqypVlAkI-0ePmfCDy1bFrKcLt1Kn3gpOr7un2-ParxrGZJjVBxghTvrA/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbxJdIAJR5OvuYBq_bNwOIkEBUuXaYSuQE7uC3QIVuLsRQWnPW1SP8tFYKYqj-tP9d73/exec";
 
 function llamarAPI(action, args = null) {
   let url = API_URL + "?action=" + encodeURIComponent(action);
   if (args) url += "&args=" + encodeURIComponent(JSON.stringify(args));
   
-  return fetch(url, {
-    method: 'GET',
-    headers: { 'Accept': 'application/json' }
-  })
-  .then(res => {
-    if (!res.ok) throw new Error('Respuesta del servidor no válida');
-    return res.json();
-  })
-  .then(json => {
-    if(json.success) return json.data;
-    throw new Error(json.error);
-  })
-  .catch(err => {
-    console.error("Error en llamada:", err);
-    // Si falla, mostramos una alerta para saber qué pasa
-    alert("Error cargando datos: " + err.message);
-  });
+  // Usamos 'no-cors' para que el iPhone no bloquee la salida
+  return fetch(url, { mode: 'no-cors' })
+    .then(() => {
+        // Como 'no-cors' no nos deja ver el cuerpo de la respuesta, 
+        // llamamos a la URL normal para obtener el JSON
+        return fetch(url).then(res => res.json());
+    })
+    .then(json => {
+        return json.data;
+    })
+    .catch(err => {
+        console.error("Error técnico:", err);
+        alert("Error de red: " + err);
+    });
 }
 
         
