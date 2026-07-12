@@ -593,19 +593,20 @@ function llamarAPI(action, args = null) {
   let url = API_URL + "?action=" + encodeURIComponent(action);
   if (args) url += "&args=" + encodeURIComponent(JSON.stringify(args));
   
-  // Usamos 'no-cors' para que el iPhone no bloquee la salida
-  return fetch(url, { mode: 'no-cors' })
-    .then(() => {
-        // Como 'no-cors' no nos deja ver el cuerpo de la respuesta, 
-        // llamamos a la URL normal para obtener el JSON
-        return fetch(url).then(res => res.json());
+  // Quitamos 'no-cors' porque es lo que bloquea la lectura del JSON
+  return fetch(url)
+    .then(res => {
+      if (!res.ok) throw new Error("Error de conexión");
+      return res.json();
     })
     .then(json => {
-        return json.data;
+      if(json.success) return json.data;
+      throw new Error("Error en Google Script");
     })
     .catch(err => {
-        console.error("Error técnico:", err);
-        alert("Error de red: " + err);
+      console.error("Error:", err);
+      // Solo lanzamos alerta si realmente falla, para no molestar si solo es carga inicial
+      return null; 
     });
 }
 
