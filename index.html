@@ -984,7 +984,7 @@ if (idVista === 'resumen' || idVista === 'clientas') {
     <h3 class="client-name">${item.cliente || 'Sin Nombre'}</h3>
     <div style="display:flex; align-items:center; gap:10px;">
       <span class="client-total">${item.total}</span>
-      <button onclick="confirmarEliminarClienta(event, ${indexArray})" style="background:none; border:none; padding:2px; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+      <button onclick="event.stopPropagation(); confirmarEliminarClienta(${indexArray})" style="background:none; border:none; padding:2px; display:flex; align-items:center; justify-content:center; cursor:pointer;">
         <svg viewBox="0 0 24 24" style="width:18px; height:18px; fill:#FF3B30;"><path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/></svg>
       </button>
     </div>
@@ -1234,8 +1234,7 @@ if (idVista === 'resumen' || idVista === 'clientas') {
           fechaGoogleSheet = `${d}/${m}/${y} ${hr}:${mn}:00`;
         }
 
-        function confirmarEliminarClienta(e, index) {
-  e.stopPropagation(); // Evita que se abra el modal de edición
+        function confirmarEliminarClienta(index) {
   let item = clientasDataGlobal[index];
   if (confirm(`¿Eliminar la comanda de "${item.cliente || 'Sin Nombre'}" por ${item.total}? Esta acción no se puede deshacer.`)) {
     eliminarClientaApp(item.fila);
