@@ -980,19 +980,24 @@ if (idVista === 'resumen' || idVista === 'clientas') {
             card.style.cursor = 'pointer'; // Manito de clic
             card.setAttribute('onclick', `abrirModalEdicion(${indexArray})`); // Acción al tocar
             card.innerHTML = `
-              <div class="client-header">
-                <h3 class="client-name">${item.cliente || 'Sin Nombre'}</h3>
-                <span class="client-total">${item.total}</span>
-              </div>
-              <p class="client-detail"><strong>Servicios:</strong> ${item.servicios}</p>
-              <p class="client-detail"><strong>Fecha:</strong> ${item.fecha}</p>
-              <div>
-                <span class="badge badge-metodo">${item.metodo}</span>
-                <span class="badge badge-staff">${item.manicurista}</span>
-                ${item.estado ? `<span class="badge" style="background:#E5E5EA;">${item.estado}</span>` : ''}
-                ${item.comisionExtra ? `<span class="badge" style="background:#FFE5E5; color:#FF3B30;">Extra: ${item.comisionExtra}</span>` : ''}
-              </div>
-            `;
+  <div class="client-header">
+    <h3 class="client-name">${item.cliente || 'Sin Nombre'}</h3>
+    <div style="display:flex; align-items:center; gap:10px;">
+      <span class="client-total">${item.total}</span>
+      <button onclick="confirmarEliminarClienta(event, ${indexArray})" style="background:none; border:none; padding:2px; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+        <svg viewBox="0 0 24 24" style="width:18px; height:18px; fill:#FF3B30;"><path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/></svg>
+      </button>
+    </div>
+  </div>
+  <p class="client-detail"><strong>Servicios:</strong> ${item.servicios}</p>
+  <p class="client-detail"><strong>Fecha:</strong> ${item.fecha}</p>
+  <div>
+    <span class="badge badge-metodo">${item.metodo}</span>
+    <span class="badge badge-staff">${item.manicurista}</span>
+    ${item.estado ? `<span class="badge" style="background:#E5E5EA;">${item.estado}</span>` : ''}
+    ${item.comisionExtra ? `<span class="badge" style="background:#FFE5E5; color:#FF3B30;">Extra: ${item.comisionExtra}</span>` : ''}
+  </div>
+`;
             lista.appendChild(card);
           }
         });
@@ -1228,6 +1233,28 @@ if (idVista === 'resumen' || idVista === 'clientas') {
           // Formato: 31/3/2026 21:45:00
           fechaGoogleSheet = `${d}/${m}/${y} ${hr}:${mn}:00`;
         }
+
+        function confirmarEliminarClienta(e, index) {
+  e.stopPropagation(); // Evita que se abra el modal de edición
+  let item = clientasDataGlobal[index];
+  if (confirm(`¿Eliminar la comanda de "${item.cliente || 'Sin Nombre'}" por ${item.total}? Esta acción no se puede deshacer.`)) {
+    eliminarClientaApp(item.fila);
+  }
+}
+
+function eliminarClientaApp(filaExcel) {
+  llamarAPI('eliminarClienta', {fila: filaExcel}).then(function() {
+    datosCargados = false;       // Forzamos recarga de clientas
+    facturacionDataGlobal = [];  // Invalida caché de facturación (totales cambiaron)
+    document.getElementById('loading-clientas').style.display = 'block';
+    llamarAPI('obtenerDatosClientas').then(function(datos) {
+      clientasDataGlobal = datos;
+      datosCargados = true;
+      document.getElementById('loading-clientas').style.display = 'none';
+      filtrarClientas();
+    });
+  });
+}
 
         const datosEditados = {
           fila: document.getElementById('edit-fila').value,
