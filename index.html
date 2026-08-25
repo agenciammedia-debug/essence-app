@@ -1562,9 +1562,14 @@ if (idVista === 'resumen' || idVista === 'clientas') {
                   ${item.fecha.split(" ")[0]} • Pagó: <strong>${item.pagadoPor}</strong> en ${item.metodo}
                 </div>
                 <div style="display: flex; justify-content: space-between; align-items: center;">
-                  <span style="font-size: 10px; font-weight: 700; padding: 4px 8px; border-radius: 6px; ${badgeStyle}">${badgeText}</span>
-                  ${!estaDevuelto && item.pagadoPor !== "Caja" ? `<button onclick="marcarDevuelto(${index})" style="background:none; border:1px solid #E5E5EA; padding:4px 12px; border-radius:6px; font-size:11px; font-weight:600; color:#000;">Marcar Pagado</button>` : ''}
-                </div>
+  <span style="font-size: 10px; font-weight: 700; padding: 4px 8px; border-radius: 6px; ${badgeStyle}">${badgeText}</span>
+  <div style="display: flex; gap: 8px; align-items: center;">
+    ${!estaDevuelto && item.pagadoPor !== "Caja" ? `<button onclick="marcarDevuelto(${index})" style="background:none; border:1px solid #E5E5EA; padding:4px 12px; border-radius:6px; font-size:11px; font-weight:600; color:#000;">Marcar Pagado</button>` : ''}
+    <button onclick="confirmarEliminarGasto(${index})" style="background:none; border:none; padding:4px; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+      <svg viewBox="0 0 24 24" style="width:18px; height:18px; fill:#FF3B30;"><path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/></svg>
+    </button>
+  </div>
+</div>
               </div>
             `;
           }
@@ -1585,6 +1590,20 @@ if (idVista === 'resumen' || idVista === 'clientas') {
         
         llamarAPI('marcarGastoDevuelto', {fila: item.fila, estado: "Sí"});
       }
+
+      function confirmarEliminarGasto(index) {
+  let item = gastosDataGlobal[index];
+  if (confirm(`¿Eliminar el gasto "${item.descripcion}" por S/. ${limpiarMonto(item.monto).toFixed(2)}? Esta acción no se puede deshacer.`)) {
+    eliminarGastoApp(item.fila);
+  }
+}
+
+function eliminarGastoApp(filaExcel) {
+  llamarAPI('eliminarGasto', {fila: filaExcel}).then(function() {
+    gastosCargados = false; // Forzamos recarga para resincronizar números de fila
+    cargarGastosBase();
+  });
+}
 
       function abrirModalGasto() {
         document.getElementById('gasto-desc').value = "";
