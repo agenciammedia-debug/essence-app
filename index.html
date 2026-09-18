@@ -890,8 +890,8 @@ function llamarAPI(action, args = null) {
 
                 if(idVista === 'comisiones') {
           if (!datosCargados && !cargandoHistorial) {
-             llamarAPI('obtenerDatosClientas').then(function(datos) {
-                clientasDataGlobal = datos;
+                         llamarAPI('obtenerDatosClientas').then(function(datos) {
+                clientasDataGlobal = datos || [];
                 datosCargados = true;
                 filtrarEquipo();
              });
@@ -1050,10 +1050,10 @@ if (idVista === 'resumen' || idVista === 'clientas') {
 
       let facturacionDataGlobal = [];
 
-      function cargarFacturacion() {
+            function cargarFacturacion() {
         if (facturacionDataGlobal.length === 0) {
           llamarAPI('obtenerDatosFacturacion').then(function(datos) {
-            facturacionDataGlobal = datos;
+            facturacionDataGlobal = datos || [];
             mostrarFacturacion();
           });
         } else {
@@ -1557,8 +1557,8 @@ if (idVista === 'resumen' || idVista === 'clientas') {
       function cargarGastosBase() {
         if (!gastosCargados) {
           document.getElementById('loading-gastos').style.display = 'block';
-          llamarAPI('obtenerDatosGastos').then(function(datos) {
-            gastosDataGlobal = datos;
+                    llamarAPI('obtenerDatosGastos').then(function(datos) {
+            gastosDataGlobal = datos || [];
             gastosCargados = true;
             document.getElementById('loading-gastos').style.display = 'none';
             mostrarGastos();
