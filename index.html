@@ -629,18 +629,18 @@ function llamarAPI(action, args = null) {
       let datosCargados = false;
       let cargandoHistorial = false;
 
-                        document.addEventListener("DOMContentLoaded", function() {
+                 document.addEventListener("DOMContentLoaded", function() {
         llamarAPI('obtenerResumenInicial').then(function(res) {
           if (!res) return;
           clientasDataGlobal = res.clientasMes || [];
-          actualizarResumenDesdeInicial(res.dashboard);
+          actualizarResumenDesdeInicial(res.meta);
         });
         // El historial completo YA NO se carga automáticamente al abrir.
         // Se carga solo cuando el usuario entra a Clientas o Equipo (ver cambiarPestana).
       });
 
-      function actualizarResumenDesdeInicial(dashboardData) {
-        metaMensualGlobal = limpiarMonto(dashboardData.meta);
+            function actualizarResumenDesdeInicial(dashboardData) {
+        metaMensualGlobal = limpiarMonto(dashboardData);
         diasFaltantesGlobal = calcularDiasLaborablesRestantes();
         document.getElementById('lbl-meta').innerText = formatearMoneda(metaMensualGlobal);
         document.getElementById('lbl-faltan-dias').innerText = "Faltan " + diasFaltantesGlobal + " días";
