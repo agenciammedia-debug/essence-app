@@ -1,4 +1,4 @@
-const CACHE_NAME = 'essence-cache-v10'; // ⚠️ Sube este número CADA VEZ que edites Index.html
+const CACHE_NAME = 'essence-cache-v11'; // ⚠️ Sube este número CADA VEZ que edites Index.html
 const STATIC_ASSETS = ['./manifest.json'];
 
 self.addEventListener('install', event => {
