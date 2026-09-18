@@ -1,5 +1,5 @@
-const CACHE_NAME = 'essence-cache-v2';
-const STATIC_ASSETS = ['./', './index.html', './manifest.json'];
+const CACHE_NAME = 'essence-cache-v3'; // ⚠️ Sube este número CADA VEZ que edites Index.html
+const STATIC_ASSETS = ['./manifest.json'];
 
 self.addEventListener('install', event => {
   event.waitUntil(
@@ -26,7 +26,22 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Cache-first para el shell estático
+  // NETWORK-FIRST para la página HTML (navegación): siempre intenta traer la versión
+  // más reciente del servidor; si no hay internet, usa la última copia guardada.
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
+        .then(resp => {
+          const respClone = resp.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(event.request, respClone));
+          return resp;
+        })
+        .catch(() => caches.match(event.request))
+    );
+    return;
+  }
+
+  // Cache-first para assets estáticos (fuentes, manifest, íconos)
   event.respondWith(
     caches.match(event.request).then(cached => {
       return cached || fetch(event.request).then(resp => {
