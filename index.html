@@ -1643,17 +1643,25 @@ if (idVista === 'resumen' || idVista === 'clientas') {
         llamarAPI('marcarGastoDevuelto', {fila: item.fila, estado: "Sí"});
       }
 
-      function confirmarEliminarGasto(index) {
+           function confirmarEliminarGasto(index) {
   let item = gastosDataGlobal[index];
   if (confirm(`¿Eliminar el gasto "${item.descripcion}" por S/. ${limpiarMonto(item.monto).toFixed(2)}? Esta acción no se puede deshacer.`)) {
-    eliminarGastoApp(item.fila);
+    eliminarGastoApp(item.fila, index);
   }
 }
 
-function eliminarGastoApp(filaExcel) {
-  llamarAPI('eliminarGasto', {fila: filaExcel}).then(function() {
-    gastosCargados = false; // Forzamos recarga para resincronizar números de fila
-    cargarGastosBase();
+function eliminarGastoApp(filaExcel, index) {
+  // 1. Actualización optimista: quitamos el item YA de la pantalla
+  gastosDataGlobal.splice(index, 1);
+  // Reajustamos el número de fila de todo lo que estaba debajo (deleteRow recorre las filas hacia arriba)
+  gastosDataGlobal.forEach(item => {
+    if (item.fila > filaExcel) item.fila -= 1;
+  });
+  mostrarGastos();
+
+  // 2. Persistimos en segundo plano, sin bloquear la UI
+  llamarAPI('eliminarGasto', {fila: filaExcel}).catch(function() {
+    alert("No se pudo eliminar en el servidor. Refresca la app.");
   });
 }
 
@@ -1672,14 +1680,11 @@ function eliminarGastoApp(filaExcel) {
         setTimeout(() => modal.style.display = 'none', 300);
       }
 
-      function guardarNuevoGasto() {
+           function guardarNuevoGasto() {
         const desc = document.getElementById('gasto-desc').value;
         const monto = document.getElementById('gasto-monto').value;
         
         if(!desc || !monto) { alert("Completa la descripción y el monto."); return; }
-
-        const btn = document.getElementById('btn-guardar-gasto');
-        btn.innerText = "Guardando..."; btn.disabled = true;
 
         const hoy = new Date();
         const fechaStr = hoy.getDate().toString().padStart(2, '0') + '/' + (hoy.getMonth()+1).toString().padStart(2, '0') + '/' + hoy.getFullYear() + ' ' + hoy.getHours() + ':' + hoy.getMinutes().toString().padStart(2, '0');
@@ -1689,14 +1694,23 @@ function eliminarGastoApp(filaExcel) {
           descripcion: desc,
           monto: monto,
           pagadoPor: document.getElementById('gasto-pagador').value,
-          metodo: document.getElementById('gasto-metodo').value
+          metodo: document.getElementById('gasto-metodo').value,
+          devuelto: "No"
         };
 
-        llamarAPI('registrarNuevoGasto', nuevoGasto).then(function() {
-          btn.innerText = "Guardar"; btn.disabled = false;
-          cerrarModalGasto();
-          gastosCargados = false; // Forzar recarga de la base de datos
-          cargarGastosBase();
+        // 1. Mostrar de inmediato (fila temporal; se corrige cuando responde el servidor)
+        const maxFila = gastosDataGlobal.reduce((max, g) => Math.max(max, g.fila), 0);
+        const filaTemporal = maxFila + 1;
+        const gastoOptimista = Object.assign({fila: filaTemporal}, nuevoGasto);
+        gastosDataGlobal.unshift(gastoOptimista);
+        mostrarGastos();
+        cerrarModalGasto();
+
+        // 2. Guardar en segundo plano
+        llamarAPI('registrarNuevoGasto', nuevoGasto).then(function(res) {
+          if (res && res.fila) gastoOptimista.fila = res.fila; // sincroniza la fila real
+        }).catch(function() {
+          alert("No se pudo guardar en el servidor. Refresca la app.");
         });
       }
         // --- Nuevas funciones para el Calendario Nativo ---
