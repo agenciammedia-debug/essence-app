@@ -620,10 +620,26 @@ function llamarAPI(action, args = null) {
       let datosCargados = false;
       let cargandoHistorial = false;
 
-      document.addEventListener("DOMContentLoaded", function() {
-        llamarAPI('obtenerDatosDashboard').then(actualizarResumen);
-        cargarHistorialCompleto(); // en segundo plano, no bloquea el Resumen
+            document.addEventListener("DOMContentLoaded", function() {
+        llamarAPI('obtenerResumenInicial').then(function(res) {
+          if (!res) return;
+          clientasDataGlobal = res.clientasMes || [];
+          actualizarResumenDesdeInicial(res.dashboard);
+        });
+        // Historial completo llega después, sin bloquear nada
+        setTimeout(cargarHistorialCompleto, 800);
       });
+
+      function actualizarResumenDesdeInicial(dashboardData) {
+        metaMensualGlobal = limpiarMonto(dashboardData.meta);
+        diasFaltantesGlobal = calcularDiasLaborablesRestantes();
+        document.getElementById('lbl-meta').innerText = formatearMoneda(metaMensualGlobal);
+        document.getElementById('lbl-faltan-dias').innerText = "Faltan " + diasFaltantesGlobal + " días";
+        document.getElementById('header-count').style.display = 'block';
+        document.getElementById('header-count').innerText = diasFaltantesGlobal < 10 ? '0' + diasFaltantesGlobal : diasFaltantesGlobal;
+        document.getElementById('btn-calendario').style.display = 'flex';
+        calcularResumenLocal(); // ya tenemos clientasDataGlobal = mes actual
+      }
 
       function cargarHistorialCompleto() {
         cargandoHistorial = true;
@@ -681,18 +697,7 @@ function llamarAPI(action, args = null) {
         if (filtro === 'rango') divRango.style.display = 'flex';
         else divRango.style.display = 'none';
 
-        if (clientasDataGlobal.length === 0) {
-          document.getElementById('loading-resumen').style.display = 'block';
-          document.getElementById('content-resumen').style.display = 'none';
-          
-          // Carga rápida: solo el mes actual (el historial llega después en segundo plano)
-          llamarAPI('obtenerClientasMesActual').then(function(datos) {
-            if (datos) clientasDataGlobal = datos;
-            calcularResumenLocal();
-          });
-        } else {
-          calcularResumenLocal();
-        }
+               calcularResumenLocal();
       }
 
       function calcularResumenLocal() {
