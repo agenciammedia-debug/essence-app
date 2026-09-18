@@ -595,7 +595,7 @@ const API_URL = "https://script.google.com/macros/s/AKfycbwRPIF993OnqZTnoKHUhuto
 
 function llamarAPI(action, args = null) {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s máximo de espera
+  const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s máximo de espera
 
   return fetch(API_URL, {
     method: 'POST',
@@ -629,14 +629,14 @@ function llamarAPI(action, args = null) {
       let datosCargados = false;
       let cargandoHistorial = false;
 
-            document.addEventListener("DOMContentLoaded", function() {
+                        document.addEventListener("DOMContentLoaded", function() {
         llamarAPI('obtenerResumenInicial').then(function(res) {
           if (!res) return;
           clientasDataGlobal = res.clientasMes || [];
           actualizarResumenDesdeInicial(res.dashboard);
         });
-        // Historial completo llega después, sin bloquear nada
-        setTimeout(cargarHistorialCompleto, 800);
+        // El historial completo YA NO se carga automáticamente al abrir.
+        // Se carga solo cuando el usuario entra a Clientas o Equipo (ver cambiarPestana).
       });
 
       function actualizarResumenDesdeInicial(dashboardData) {
