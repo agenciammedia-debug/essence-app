@@ -1299,17 +1299,26 @@ if (idVista === 'resumen' || idVista === 'clientas') {
         }
       }
 
-      function eliminarClientaApp(filaExcel) {
-        llamarAPI('eliminarClienta', {fila: filaExcel}).then(function() {
-          datosCargados = false;
-          facturacionDataGlobal = [];
-          document.getElementById('loading-clientas').style.display = 'block';
-          llamarAPI('obtenerDatosClientas').then(function(datos) {
-            clientasDataGlobal = datos;
-            datosCargados = true;
-            document.getElementById('loading-clientas').style.display = 'none';
-            filtrarClientas();
-          });
+            function eliminarClientaApp(filaExcel) {
+        // 1. Ubicamos el item por su número de fila real (no por posición en el array)
+        const index = clientasDataGlobal.findIndex(item => item.fila === filaExcel);
+        if (index === -1) return;
+
+        // 2. Lo quitamos YA de la pantalla (instantáneo)
+        clientasDataGlobal.splice(index, 1);
+
+        // 3. Reajustamos el número de fila de todo lo que estaba debajo,
+        //    porque deleteRow sube todas esas filas una posición
+        clientasDataGlobal.forEach(item => {
+          if (item.fila > filaExcel) item.fila -= 1;
+        });
+
+        filtrarClientas();       // refresca la vista de Clientas al instante
+        facturacionDataGlobal = []; // invalidamos caché local de Facturación (cambió el total)
+
+        // 4. Borrado real en el Sheet, en segundo plano — no bloquea nada
+        llamarAPI('eliminarClienta', {fila: filaExcel}).catch(function() {
+          alert("No se pudo eliminar en el servidor. Refresca la app para verificar.");
         });
       }
         // ==========================================
@@ -1650,25 +1659,32 @@ if (idVista === 'resumen' || idVista === 'clientas') {
         llamarAPI('marcarGastoDevuelto', {fila: item.fila, estado: "Sí"});
       }
 
-           function confirmarEliminarGasto(index) {
+                 function confirmarEliminarGasto(index) {
   let item = gastosDataGlobal[index];
   if (confirm(`¿Eliminar el gasto "${item.descripcion}" por S/. ${limpiarMonto(item.monto).toFixed(2)}? Esta acción no se puede deshacer.`)) {
-    eliminarGastoApp(item.fila, index);
+    eliminarGastoApp(item.fila);
   }
 }
 
-function eliminarGastoApp(filaExcel, index) {
-  // 1. Actualización optimista: quitamos el item YA de la pantalla
+function eliminarGastoApp(filaExcel) {
+  // 1. Ubicamos el item por su número de fila real (no por posición en el array)
+  const index = gastosDataGlobal.findIndex(item => item.fila === filaExcel);
+  if (index === -1) return;
+
+  // 2. Lo quitamos YA de la pantalla (instantáneo)
   gastosDataGlobal.splice(index, 1);
-  // Reajustamos el número de fila de todo lo que estaba debajo (deleteRow recorre las filas hacia arriba)
+
+  // 3. Reajustamos el número de fila de todo lo que estaba debajo,
+  //    porque deleteRow sube todas esas filas una posición
   gastosDataGlobal.forEach(item => {
     if (item.fila > filaExcel) item.fila -= 1;
   });
-  mostrarGastos();
 
-  // 2. Persistimos en segundo plano, sin bloquear la UI
+  mostrarGastos(); // refresca la vista al instante
+
+  // 4. Borrado real en el Sheet, en segundo plano — no bloquea nada
   llamarAPI('eliminarGasto', {fila: filaExcel}).catch(function() {
-    alert("No se pudo eliminar en el servidor. Refresca la app.");
+    alert("No se pudo eliminar en el servidor. Refresca la app para verificar.");
   });
 }
 
