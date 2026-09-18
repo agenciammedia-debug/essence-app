@@ -273,7 +273,7 @@
     <div id="view-clientas" class="view-container">
       
       <div class="search-container" style="flex-wrap: wrap; gap: 10px;">
-        <input type="text" id="buscador" class="search-bar" style="width: 100%;" placeholder="Buscar clienta, servicio, pago, up selling..." oninput="filtrarClientas()">
+                  <input type="text" id="buscador" class="search-bar" style="width: 100%;" placeholder="Buscar clienta, servicio, pago, up selling..." oninput="filtrarClientasDebounced()">
         
         <div style="display: flex; gap: 10px; width: 100%;">
           <select id="filtro-fecha" class="filter-select" style="flex: 1;" onchange="filtrarClientas()">
@@ -436,15 +436,13 @@
           </div>
           <div style="flex: 1;">
             <label class="form-label">Manicurista</label>
-            <select id="edit-manicurista" class="modal-input select-ios">
+                        <select id="edit-manicurista" class="modal-input select-ios">
               <option value="Mari">Mari</option>
               <option value="Alondra">Alondra</option>
               <option value="Darcy">Darcy</option>
-              <option value="Elliani">Elliani</option>
               <option value="Fressia">Fressia</option>
               <option value="Carmen">Carmen</option>
-               <option value="Shirley">Shirley</option>
-
+              <option value="Shirley">Shirley</option>
             </select>
           </div>
         </div>
@@ -824,8 +822,8 @@ function llamarAPI(action, args = null) {
         document.getElementById('bar-progreso').style.width = pctInt + '%';
 
         // 5. DIBUJAR NUEVA TARJETA DE RENDIMIENTO POR EQUIPO
-        const listaRendimiento = document.getElementById('lista-rendimiento-equipo');
-        listaRendimiento.innerHTML = '';
+                const listaRendimiento = document.getElementById('lista-rendimiento-equipo');
+        let htmlRendimiento = [];
         
         let rankingNombres = Object.keys(rendimientoEquipo).sort((a,b) => rendimientoEquipo[b].upsells - rendimientoEquipo[a].upsells);
         
@@ -834,7 +832,7 @@ function llamarAPI(action, args = null) {
           let conversion = datos.clientas > 0 ? Math.round((datos.upsells / datos.clientas) * 100) : 0;
           let colorUpsell = datos.upsells > 0 ? '#FF2D55' : 'var(--text-sec)';
           
-          listaRendimiento.innerHTML += `
+          htmlRendimiento.push(`
             <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 0.5px solid #E5E5EA;">
               <div>
                 <div style="font-size: 15px; font-weight: 600;">${nombre}</div>
@@ -845,14 +843,11 @@ function llamarAPI(action, args = null) {
                 <div style="font-size: 11px; font-weight: 700; color: var(--accent); background: rgba(0,122,255,0.08); display: inline-block; padding: 3px 8px; border-radius: 6px; margin-top: 4px;">${conversion}% Conv.</div>
               </div>
             </div>
-          `;
+          `);
         });
         
-        if (rankingNombres.length === 0) {
-           listaRendimiento.innerHTML = '<div class="empty-state" style="padding: 10px 0;">No hay datos en este periodo</div>';
-        }
+        listaRendimiento.innerHTML = htmlRendimiento.length ? htmlRendimiento.join('') : '<div class="empty-state" style="padding: 10px 0;">No hay datos en este periodo</div>';
       }
-
       function cambiarPestana(idVista, titulo, evento) {
         document.getElementById('header-title').innerText = titulo;
         
@@ -919,7 +914,13 @@ if (idVista === 'resumen' || idVista === 'clientas') {
 }
       }
 
-      // LÓGICA DE FILTRADO Y BÚSQUEDA
+            // LÓGICA DE FILTRADO Y BÚSQUEDA
+      let _debounceBuscador = null;
+      function filtrarClientasDebounced() {
+        clearTimeout(_debounceBuscador);
+        _debounceBuscador = setTimeout(filtrarClientas, 200);
+      }
+
       function filtrarClientas() {
         const texto = document.getElementById('buscador').value.toLowerCase();
         const filtroFecha = document.getElementById('filtro-fecha').value;
@@ -1467,10 +1468,10 @@ if (idVista === 'resumen' || idVista === 'clientas') {
         });
 
         // ================= DIBUJAR LISTAS =================
-        const listaCom = document.getElementById('lista-comisiones');
+                const listaCom = document.getElementById('lista-comisiones');
         const listaUp = document.getElementById('lista-upselling');
-        listaCom.innerHTML = '';
-        listaUp.innerHTML = '';
+        let htmlCom = [];
+        let htmlUp = [];
 
         let totalComisionesPeriodo = 0;
         let totalUpsellsGlobal = 0;
@@ -1483,7 +1484,7 @@ if (idVista === 'resumen' || idVista === 'clientas') {
           let comisionCalculada = datos.ventasTotales * porcentaje;
           totalComisionesPeriodo += comisionCalculada;
 
-          listaCom.innerHTML += `
+                    htmlCom.push(`
             <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 0.5px solid #E5E5EA;">
               <div>
                 <div style="font-size: 15px; font-weight: 600;">${nombre}</div>
@@ -1491,11 +1492,11 @@ if (idVista === 'resumen' || idVista === 'clientas') {
               </div>
               <div style="font-size: 16px; font-weight: 700; color: var(--success);">${formatearMoneda(comisionCalculada)}</div>
             </div>
-          `;
-          textoCopiarComisiones += `💅 ${nombre}: *${formatearMoneda(comisionCalculada)}*\n`;
+          `);
         });
 
-        // Actualizar el monto total en el encabezado HTML y en WhatsApp
+        listaCom.innerHTML = htmlCom.join('');
+
         document.getElementById('equipo-total-comisiones').innerText = formatearMoneda(totalComisionesPeriodo);
         textoCopiarComisiones += `\n💵 *TOTAL PAGADO: ${formatearMoneda(totalComisionesPeriodo)}*`;
 
@@ -1508,16 +1509,17 @@ if (idVista === 'resumen' || idVista === 'clientas') {
             let colorTexto = item.upsells > 0 ? '#FF2D55' : 'var(--text-sec)';
             let fontWeight = item.upsells > 0 ? '700' : '500';
             
-            listaUp.innerHTML += `
+                       htmlUp.push(`
               <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 0.5px solid #E5E5EA;">
                 <div style="font-size: 15px; font-weight: 600;">${item.nombre}</div>
                 <div style="font-size: 16px; font-weight: ${fontWeight}; color: ${colorTexto};">${item.upsells} logrados</div>
               </div>
-            `;
+            `);
             textoCopiarUpSelling += `🔥 ${item.nombre}: *${item.upsells}*\n`;
         });
 
-        // Actualizar el número total en la esquina de la tarjeta
+        listaUp.innerHTML = htmlUp.join('');
+
         document.getElementById('equipo-total-upselling').innerText = totalUpsellsGlobal;
         textoCopiarUpSelling += `\n🚀 *TOTAL UP SELLING: ${totalUpsellsGlobal}*`;
       }
@@ -1571,7 +1573,7 @@ if (idVista === 'resumen' || idVista === 'clientas') {
         const filtroTiempo = document.getElementById('gastos-filtro-tiempo').value;
         const divRango = document.getElementById('gastos-rango-fechas');
         const lista = document.getElementById('lista-gastos');
-        lista.innerHTML = '';
+        let htmlGastos = [];
         
         divRango.style.display = (filtroTiempo === 'rango') ? 'flex' : 'none';
 
@@ -1626,7 +1628,7 @@ if (idVista === 'resumen' || idVista === 'clientas') {
             let badgeText = estaDevuelto ? 'Pagado/Cuadrado' : 'Pendiente';
             if(item.pagadoPor === "Caja") { badgeStyle = 'background:#E5E5EA; color:var(--text-main);'; badgeText = 'Gasto de Caja'; }
 
-            lista.innerHTML += `
+                        htmlGastos.push(`
               <div class="card" style="padding: 16px; margin-bottom: 10px;">
                 <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
                   <div style="font-weight: 600; font-size: 15px;">${item.descripcion}</div>
@@ -1645,16 +1647,15 @@ if (idVista === 'resumen' || idVista === 'clientas') {
   </div>
 </div>
               </div>
-            `;
+            `);
           }
         });
 
-        // Actualizar la Tarjeta Negra Superior
+        lista.innerHTML = htmlGastos.length ? htmlGastos.join('') : '<div class="empty-state">No hay gastos que coincidan.</div>';
+
         document.getElementById('gasto-total-periodo').innerText = formatearMoneda(totalGastadoPeriodo);
         document.getElementById('deuda-carlos').innerText = formatearMoneda(deudaCarlos);
         document.getElementById('deuda-mari').innerText = formatearMoneda(deudaMari);
-        
-        if(lista.innerHTML === '') lista.innerHTML = '<div class="empty-state">No hay gastos que coincidan.</div>';
       }
 
       function marcarDevuelto(index) {
