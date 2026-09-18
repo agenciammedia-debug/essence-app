@@ -592,16 +592,17 @@ const API_URL = "https://script.google.com/macros/s/AKfycbwRPIF993OnqZTnoKHUhuto
 
 
 function llamarAPI(action, args = null) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s máximo de espera
+
   return fetch(API_URL, {
     method: 'POST',
-    // Usamos text/plain en lugar de application/json. 
-    // Esto evita que Safari haga la petición "preflight" (CORS) que causa el bloqueo.
-    headers: {
-      'Content-Type': 'text/plain;charset=utf-8',
-    },
-    body: JSON.stringify({ action: action, args: args })
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action: action, args: args }),
+    signal: controller.signal
   })
   .then(res => {
+    clearTimeout(timeoutId);
     if (!res.ok) throw new Error("Error en la red");
     return res.json();
   })
@@ -610,8 +611,14 @@ function llamarAPI(action, args = null) {
     throw new Error(json.error);
   })
   .catch(err => {
-    console.error("Error al conectar con Google:", err);
-    return null; // Devolvemos null para que la app no colapse si falla un momento
+    clearTimeout(timeoutId);
+    if (err.name === 'AbortError') {
+      console.warn("Tiempo de espera agotado: " + action);
+      alert("La conexión está tardando demasiado. Intenta de nuevo en unos segundos.");
+    } else {
+      console.error("Error al conectar con Google:", err);
+    }
+    return null;
   });
 }
 
