@@ -757,10 +757,10 @@ function llamarAPI(action, args = null) {
             tTotal += monto;
             cTotal++;
 
-            // Agrupar Métodos de Pago
+             // Agrupar Métodos de Pago
             let met = (item.metodo || "").toUpperCase();
-            if (met.includes('PLIN')) tPlin += monto;
-            else if (met.includes('YAPE')) tYape += monto;
+            if (met.includes('CANJE')) { /* no se cuenta como ingreso: es un canje, no un pago real */ }
+            else if (met.includes('PLIN') || met.includes('YAPE')) tPlin += monto;
             else if (met.includes('EFECTIVO')) tEfectivo += monto;
             else if (met.includes('TARJETA') || met.includes('CREDITO') || met.includes('DEBITO')) tTarjeta += monto;
 
