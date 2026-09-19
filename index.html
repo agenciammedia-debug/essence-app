@@ -706,7 +706,21 @@ function llamarAPI(action, args = null) {
         if (filtro === 'rango') divRango.style.display = 'flex';
         else divRango.style.display = 'none';
 
-               calcularResumenLocal();
+        // "Mes pasado" y "Rango" necesitan el historial completo, no solo el mes actual
+        const necesitaHistorial = (filtro === 'mes_pasado' || filtro === 'rango');
+        if (necesitaHistorial && !datosCargados && !cargandoHistorial) {
+          document.getElementById('loading-resumen').style.display = 'block';
+          document.getElementById('content-resumen').style.display = 'none';
+          cargandoHistorial = true;
+          llamarAPI('obtenerDatosClientas').then(function(datos) {
+            cargandoHistorial = false;
+            if (datos) { clientasDataGlobal = datos; datosCargados = true; }
+            calcularResumenLocal();
+          });
+          return;
+        }
+
+        calcularResumenLocal();
       }
 
       function calcularResumenLocal() {
@@ -714,7 +728,7 @@ function llamarAPI(action, args = null) {
         const hoy = new Date();
         hoy.setHours(0,0,0,0);
 
-        let tTotal = 0, tPlin = 0, tYape = 0, tEfectivo = 0, tTarjeta = 0;
+                let tTotal = 0, tPlin = 0, cCanje = 0, tEfectivo = 0, tTarjeta = 0;
         let cTotal = 0, cNuevas = 0, cAntiguas = 0, cUpsells = 0; 
         
         // Objeto para almacenar el rendimiento de cada chica
@@ -758,12 +772,12 @@ function llamarAPI(action, args = null) {
             cTotal++;
 
              // Agrupar Métodos de Pago
-                       // Agrupar Métodos de Pago
+                     // Agrupar Métodos de Pago
             let met = (item.metodo || "").toUpperCase();
-            if (met.includes('CANJE')) tYape += monto; // reutilizamos tYape como "Canje" (tarjetas virtuales acumuladas)
+            if (met.includes('CANJE')) cCanje++; // Canje: se cuenta personas, no soles (no suma monto, no es ingreso en efectivo)
             else if (met.includes('PLIN') || met.includes('YAPE')) tPlin += monto;
             else if (met.includes('EFECTIVO')) tEfectivo += monto;
-            else if (met.includes('TARJETA') || met.includes('CREDITO') || met.includes('DEBITO')) tTarjeta += monto; // tarjetas de débito/crédito reales
+            else if (met.includes('TARJETA') || met.includes('CREDITO') || met.includes('DEBITO')) tTarjeta += monto;
 
             // Agrupar Estados de Clientas
             let est = (item.estado || "").toUpperCase();
@@ -796,7 +810,7 @@ function llamarAPI(action, args = null) {
         document.getElementById('lbl-mes').innerText = formatearMoneda(tTotal); 
 
         document.getElementById('lbl-plin').innerText = formatearMoneda(tPlin);
-        document.getElementById('lbl-yape').innerText = formatearMoneda(tYape);
+        document.getElementById('lbl-yape').innerText = cCanje + (cCanje === 1 ? ' persona' : ' personas');
         document.getElementById('lbl-efectivo').innerText = formatearMoneda(tEfectivo);
         document.getElementById('lbl-tcredito').innerText = formatearMoneda(tTarjeta);
 
