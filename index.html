@@ -209,7 +209,7 @@
           <div class="amount green" id="lbl-hoy">S/. 0.00</div>
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 12px; border-top: 1px solid #E5E5EA; padding-top: 15px; margin-top: 15px; color: var(--text-sec);">
             <div style="display: flex; justify-content: space-between;"><span>PLIN:</span> <strong id="lbl-plin" style="color: var(--text-main);">S/. 0.00</strong></div>
-            <div style="display: flex; justify-content: space-between;"><span>YAPE:</span> <strong id="lbl-yape" style="color: var(--text-main);">S/. 0.00</strong></div>
+                        <div style="display: flex; justify-content: space-between;"><span>CANJE:</span> <strong id="lbl-yape" style="color: var(--text-main);">S/. 0.00</strong></div>
             <div style="display: flex; justify-content: space-between;"><span>EFECTIVO:</span> <strong id="lbl-efectivo" style="color: var(--text-main);">S/. 0.00</strong></div>
             <div style="display: flex; justify-content: space-between;"><span>TARJETA:</span> <strong id="lbl-tcredito" style="color: var(--text-main);">S/. 0.00</strong></div>
           </div>
@@ -758,11 +758,12 @@ function llamarAPI(action, args = null) {
             cTotal++;
 
              // Agrupar Métodos de Pago
+                       // Agrupar Métodos de Pago
             let met = (item.metodo || "").toUpperCase();
-            if (met.includes('CANJE')) { /* no se cuenta como ingreso: es un canje, no un pago real */ }
+            if (met.includes('CANJE')) tYape += monto; // reutilizamos tYape como "Canje" (tarjetas virtuales acumuladas)
             else if (met.includes('PLIN') || met.includes('YAPE')) tPlin += monto;
             else if (met.includes('EFECTIVO')) tEfectivo += monto;
-            else if (met.includes('TARJETA') || met.includes('CREDITO') || met.includes('DEBITO')) tTarjeta += monto;
+            else if (met.includes('TARJETA') || met.includes('CREDITO') || met.includes('DEBITO')) tTarjeta += monto; // tarjetas de débito/crédito reales
 
             // Agrupar Estados de Clientas
             let est = (item.estado || "").toUpperCase();
