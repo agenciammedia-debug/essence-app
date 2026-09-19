@@ -635,8 +635,17 @@ function llamarAPI(action, args = null) {
           clientasDataGlobal = res.clientasMes || [];
           actualizarResumenDesdeInicial(res.meta);
         });
-        // El historial completo YA NO se carga automáticamente al abrir.
+        // El historial completo de Essence YA NO se carga automáticamente al abrir.
         // Se carga solo cuando el usuario entra a Clientas o Equipo (ver cambiarPestana).
+
+        // Facturación SÍ se carga en paralelo al abrir: Resumen la necesita
+        // para mostrar montos idénticos a la pestaña Ingresos.
+        llamarAPI('obtenerDatosFacturacion').then(function(datos) {
+          facturacionDataGlobal = datos || [];
+          facturacionCargada = true;
+          const vistaActiva = document.querySelector('.view-container.active');
+          if (vistaActiva && vistaActiva.id === 'view-resumen') calcularResumenLocal();
+        });
       });
 
             function actualizarResumenDesdeInicial(dashboardData) {
@@ -706,8 +715,9 @@ function llamarAPI(action, args = null) {
         if (filtro === 'rango') divRango.style.display = 'flex';
         else divRango.style.display = 'none';
 
-        // "Mes pasado" y "Rango" necesitan el historial completo, no solo el mes actual
-        const necesitaHistorial = (filtro === 'mes_pasado' || filtro === 'rango');
+        // Cualquier filtro que no sea "Este mes" o "Hoy" puede necesitar datos
+        // fuera del mes actual (ej. "Ayer" el día 1, "30 días" cruzando de mes).
+        const necesitaHistorial = (filtro !== 'este_mes' && filtro !== 'hoy');
         if (necesitaHistorial && !datosCargados && !cargandoHistorial) {
           document.getElementById('loading-resumen').style.display = 'block';
           document.getElementById('content-resumen').style.display = 'none';
@@ -723,14 +733,29 @@ function llamarAPI(action, args = null) {
         calcularResumenLocal();
       }
 
-      function calcularResumenLocal() {
+            function calcularResumenLocal() {
         const filtro = document.getElementById('resumen-filtro-fecha').value;
+
+        // Los montos (Ingresos, PLIN, Tarjeta, Efectivo) SIEMPRE se leen de Facturación,
+        // la misma fuente que usa la pestaña Ingresos. Si aún no está en memoria, la
+        // pedimos y nos volvemos a llamar cuando llegue.
+        if (!facturacionCargada) {
+          document.getElementById('loading-resumen').style.display = 'block';
+          document.getElementById('content-resumen').style.display = 'none';
+          llamarAPI('obtenerDatosFacturacion').then(function(datos) {
+            facturacionDataGlobal = datos || [];
+            facturacionCargada = true;
+            calcularResumenLocal();
+          });
+          return;
+        }
+
         const hoy = new Date();
         hoy.setHours(0,0,0,0);
 
-                let tTotal = 0, tPlin = 0, cCanje = 0, tEfectivo = 0, tTarjeta = 0;
-        let cTotal = 0, cNuevas = 0, cAntiguas = 0, cUpsells = 0; 
-        
+        let cCanje = 0;
+        let cTotal = 0, cNuevas = 0, cAntiguas = 0, cUpsells = 0;
+
         // Objeto para almacenar el rendimiento de cada chica
         let rendimientoEquipo = {};
 
@@ -767,27 +792,21 @@ function llamarAPI(action, args = null) {
           }
 
           if (coincide) {
-            let monto = limpiarMonto(item.total);
-            tTotal += monto;
             cTotal++;
 
-             // Agrupar Métodos de Pago
-                     // Agrupar Métodos de Pago
+            // Canje: no es dinero, se cuenta como personas
             let met = (item.metodo || "").toUpperCase();
-            if (met.includes('CANJE')) cCanje++; // Canje: se cuenta personas, no soles (no suma monto, no es ingreso en efectivo)
-            else if (met.includes('PLIN') || met.includes('YAPE')) tPlin += monto;
-            else if (met.includes('EFECTIVO')) tEfectivo += monto;
-            else if (met.includes('TARJETA') || met.includes('CREDITO') || met.includes('DEBITO')) tTarjeta += monto;
+            if (met.includes('CANJE')) cCanje++;
 
             // Agrupar Estados de Clientas
             let est = (item.estado || "").toUpperCase();
             if (est.includes('NUEVA')) cNuevas++;
             else if (est.includes('ANTIGUA')) cAntiguas++;
-            
-            // Registrar atenciones por manicurista para la nueva tarjeta
+
+            // Registrar atenciones por manicurista
             let nombre = item.manicurista ? item.manicurista.trim() : "Sin asignar";
             nombre = nombre.charAt(0).toUpperCase() + nombre.slice(1).toLowerCase();
-            
+
             if (!rendimientoEquipo[nombre]) {
               rendimientoEquipo[nombre] = { clientas: 0, upsells: 0 };
             }
@@ -802,12 +821,19 @@ function llamarAPI(action, args = null) {
           }
         });
 
+        // Montos: EXACTAMENTE la misma fuente y lógica que la pestaña Ingresos
+        const totalesFact = calcularTotalesFacturacion(facturacionDataGlobal, filtro, 'resumen-fecha-inicio', 'resumen-fecha-fin');
+        const tTotal = totalesFact.tTotal;
+        const tPlin = totalesFact.tPlin;
+        const tTarjeta = totalesFact.tTarjeta;
+        const tEfectivo = totalesFact.tEfectivo;
+
         // Actualizar los textos de la interfaz con formato elegante
         document.getElementById('loading-resumen').style.display = 'none';
         document.getElementById('content-resumen').style.display = 'block';
 
         document.getElementById('lbl-hoy').innerText = formatearMoneda(tTotal);
-        document.getElementById('lbl-mes').innerText = formatearMoneda(tTotal); 
+        document.getElementById('lbl-mes').innerText = formatearMoneda(tTotal);
 
         document.getElementById('lbl-plin').innerText = formatearMoneda(tPlin);
         document.getElementById('lbl-yape').innerText = cCanje + (cCanje === 1 ? ' persona' : ' personas');
@@ -1064,11 +1090,13 @@ if (idVista === 'resumen' || idVista === 'clientas') {
       }
 
       let facturacionDataGlobal = [];
+      let facturacionCargada = false;
 
-            function cargarFacturacion() {
-        if (facturacionDataGlobal.length === 0) {
+      function cargarFacturacion() {
+        if (!facturacionCargada) {
           llamarAPI('obtenerDatosFacturacion').then(function(datos) {
             facturacionDataGlobal = datos || [];
+            facturacionCargada = true;
             mostrarFacturacion();
           });
         } else {
@@ -1111,12 +1139,68 @@ if (idVista === 'resumen' || idVista === 'clientas') {
       }
 
       // Función inteligente para formatear moneda sin .00 innecesarios
+      // Función inteligente para formatear moneda sin .00 innecesarios
       function formatearMoneda(valor) {
         if (Number.isInteger(valor)) {
           return "S/. " + valor.toLocaleString('es-PE'); // Sin decimales
         } else {
           return "S/. " + valor.toLocaleString('es-PE', {minimumFractionDigits: 2, maximumFractionDigits: 2}); // Con decimales
         }
+      }
+
+      // FUENTE ÚNICA DE VERDAD para montos de dinero: la usan tanto Resumen como Ingresos,
+      // así ambas pantallas SIEMPRE muestran exactamente el mismo número.
+      function calcularTotalesFacturacion(datosFacturacion, filtro, idFechaInicio, idFechaFin) {
+        let tTotal = 0, tClientes = 0, tPlin = 0, tTarjeta = 0, tEfectivo = 0;
+        const hoy = new Date();
+        hoy.setHours(0,0,0,0);
+
+        (datosFacturacion || []).forEach(item => {
+          let partes = item.fecha.split("/");
+          let fechaFila = new Date(partes[2], partes[0]-1, partes[1]);
+          fechaFila.setHours(0,0,0,0);
+
+          let coincide = false;
+          let diffDias = Math.round((hoy.getTime() - fechaFila.getTime()) / (1000 * 60 * 60 * 24));
+
+          if (filtro === 'todo') coincide = diffDias >= 0;
+          else if (filtro === 'hoy') coincide = diffDias === 0;
+          else if (filtro === 'ayer') coincide = diffDias === 1;
+          else if (filtro === 'semana') coincide = diffDias >= 0 && diffDias <= 7;
+          else if (filtro === '14dias') coincide = diffDias >= 0 && diffDias <= 14;
+          else if (filtro === 'este_mes') coincide = fechaFila.getMonth() === hoy.getMonth() && fechaFila.getFullYear() === hoy.getFullYear();
+          else if (filtro === '30dias') coincide = diffDias >= 0 && diffDias <= 30;
+          else if (filtro === 'mes_pasado') {
+            let m = hoy.getMonth() === 0 ? 11 : hoy.getMonth() - 1;
+            let a = hoy.getMonth() === 0 ? hoy.getFullYear() - 1 : hoy.getFullYear();
+            coincide = fechaFila.getMonth() === m && fechaFila.getFullYear() === a;
+          } else if (filtro === 'rango') {
+            let inputInicio = document.getElementById(idFechaInicio).value;
+            let inputFin = document.getElementById(idFechaFin).value;
+            if (inputInicio && inputFin) {
+              let dateInicio = new Date(inputInicio + "T00:00:00");
+              let dateFin = new Date(inputFin + "T23:59:59");
+              coincide = fechaFila >= dateInicio && fechaFila <= dateFin;
+            } else if (inputInicio) {
+              let dateInicio = new Date(inputInicio + "T00:00:00");
+              coincide = fechaFila.getTime() === dateInicio.getTime();
+            }
+          }
+
+          if (coincide) {
+            let montoTotal = limpiarMonto(item.total);
+            let numClientes = parseInt(item.clientes) || 0;
+            if (montoTotal === 0 && numClientes === 0 && filtro !== 'hoy' && filtro !== 'ayer') return;
+
+            tTotal += montoTotal;
+            tClientes += numClientes;
+            tPlin += (limpiarMonto(item.plin) + limpiarMonto(item.yape));
+            tTarjeta += limpiarMonto(item.tarjeta);
+            tEfectivo += limpiarMonto(item.efectivo);
+          }
+        });
+
+        return { tTotal, tClientes, tPlin, tTarjeta, tEfectivo };
       }
 
       function mostrarFacturacion() {
@@ -1307,7 +1391,8 @@ if (idVista === 'resumen' || idVista === 'clientas') {
             clientasDataGlobal[index] = datosEditados;
             filtrarClientas();
 
-            facturacionDataGlobal = []; 
+            facturacionDataGlobal = [];
+            facturacionCargada = false;
         });
       }
 
@@ -1335,6 +1420,7 @@ if (idVista === 'resumen' || idVista === 'clientas') {
 
         filtrarClientas();       // refresca la vista de Clientas al instante
         facturacionDataGlobal = []; // invalidamos caché local de Facturación (cambió el total)
+        facturacionCargada = false;
 
         // 4. Borrado real en el Sheet, en segundo plano — no bloquea nada
         llamarAPI('eliminarClienta', {fila: filaExcel}).catch(function() {
