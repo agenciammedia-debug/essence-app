@@ -1,4 +1,4 @@
-const CACHE_NAME = 'essence-cache-v14'; // ⚠️ Sube este número CADA VEZ que edites Index.html
+const CACHE_NAME = 'essence-cache-v15'; // ⚠️ Sube este número CADA VEZ que edites Index.html
 const STATIC_ASSETS = ['./manifest.json'];
 
 self.addEventListener('install', event => {
@@ -26,8 +26,7 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // NETWORK-FIRST para la página HTML (navegación): siempre intenta traer la versión
-  // más reciente del servidor; si no hay internet, usa la última copia guardada.
+  // NETWORK-FIRST para la página HTML
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request)
