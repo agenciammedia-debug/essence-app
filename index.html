@@ -516,7 +516,17 @@
           <label class="form-label">Meta Mensual Surco (S/.)</label>
           <input type="number" id="edit-meta-surco" class="modal-input" placeholder="Ej: 20000" inputmode="decimal">
         </div>
-        <div style="font-size: 12px; color: var(--text-sec); margin: 4px 5px 0 5px; line-height: 1.4;">En "Todas" la meta es la suma de ambas sedes.</div>
+                <div style="font-size: 12px; color: var(--text-sec); margin: 4px 5px 0 5px; line-height: 1.4;">En "Todas" la meta es la suma de ambas sedes.</div>
+
+        <div class="form-group" style="margin-top: 24px;">
+          <label class="form-label">Manicuristas</label>
+          <div id="lista-manicuristas-config" style="background: white; border-radius: 12px; overflow: hidden;"></div>
+          <div style="display: flex; gap: 10px; margin-top: 10px;">
+            <input type="text" id="nueva-manicurista" class="modal-input" placeholder="Nombre" style="flex: 1;">
+            <button class="modal-btn" onclick="agregarManicuristaConfig()" style="background: var(--accent); color: white; padding: 0 16px; border-radius: 12px; font-size: 15px;">Agregar</button>
+          </div>
+          <div style="font-size: 12px; color: var(--text-sec); margin: 8px 5px 0 5px; line-height: 1.4;">Los cambios también se aplican en la app de registro al pulsar Guardar.</div>
+        </div>  
       </div>
     </div>
 
@@ -678,7 +688,9 @@ function llamarAPI(action, args = null) {
         if (guardada === 'todas' || SEDES.indexOf(guardada) !== -1) sedeActual = guardada;
       } catch (e) {}
 
-      let metasSede = { Miraflores: 0, Surco: 0 };
+            let metasSede = { Miraflores: 0, Surco: 0 };
+      let manicuristasConfig = null;   // lista guardada en la app de registro
+      let manicuristasEdicion = [];    // copia temporal mientras editas en Ajustes
 
       function sedeDe(item) {
         const s = item && item.sede ? String(item.sede).trim() : '';
@@ -821,7 +833,8 @@ function llamarAPI(action, args = null) {
 
         llamarAPI('obtenerResumenInicial').then(function(res) {
           if (!res) return;
-          if (!datosCargados) clientasDataGlobal = res.clientasMes || [];
+                    if (!datosCargados) clientasDataGlobal = res.clientasMes || [];
+          if (Array.isArray(res.manicuristas) && res.manicuristas.length) manicuristasConfig = res.manicuristas;
           actualizarListasEquipo();
           actualizarResumenDesdeInicial(res);
         });
@@ -1154,7 +1167,11 @@ function llamarAPI(action, args = null) {
       // ==========================================
       // EQUIPO: la lista se arma desde los registros (últimos 90 días)
       // ==========================================
-      function obtenerEquipoActivo() {
+            function obtenerEquipoActivo() {
+        // Si hay lista configurada en Ajustes, esa manda
+        if (manicuristasConfig && manicuristasConfig.length) {
+          return manicuristasConfig.map(normalizarNombre).filter(Boolean).sort();
+        }
         const hoy = new Date();
         hoy.setHours(0,0,0,0);
         const limite = new Date(hoy);
@@ -1535,7 +1552,10 @@ function llamarAPI(action, args = null) {
       // ==========================================
       function abrirModalConfig() {
         document.getElementById('edit-meta-miraflores').value = metasSede.Miraflores || '';
-        document.getElementById('edit-meta-surco').value = metasSede.Surco || '';
+                document.getElementById('edit-meta-surco').value = metasSede.Surco || '';
+        manicuristasEdicion = (manicuristasConfig && manicuristasConfig.length ? manicuristasConfig : obtenerEquipoActivo()).slice();
+        document.getElementById('nueva-manicurista').value = '';
+        pintarManicuristasConfig();
         
         const modal = document.getElementById('modal-configuracion');
         modal.style.display = 'flex';
@@ -1559,17 +1579,55 @@ function llamarAPI(action, args = null) {
           Surco: parseFloat(document.getElementById('edit-meta-surco').value) || 0
         };
 
-        llamarAPI('guardarMetasSede', nuevas).then(function(res) {
+                Promise.all([
+          llamarAPI('guardarMetasSede', nuevas),
+          llamarAPI('guardarManicuristas', manicuristasEdicion)
+        ]).then(function(resultados) {
+          const resMetas = resultados[0];
+          const resMan = resultados[1];
           btn.innerText = "Guardar";
           btn.disabled = false;
-          if (res === null) {
-            alert("No se pudo guardar la meta. Intenta de nuevo.");
+          if (resMetas === null || resMan === null) {
+            alert("No se pudieron guardar todos los cambios. Intenta de nuevo.");
             return;
           }
           cerrarModalConfig();
-          metasSede = { Miraflores: Number(res.Miraflores) || 0, Surco: Number(res.Surco) || 0 };
+          metasSede = { Miraflores: Number(resMetas.Miraflores) || 0, Surco: Number(resMetas.Surco) || 0 };
+          manicuristasConfig = resMan;
+          actualizarListasEquipo();
           calcularResumenLocal();
         });
+      }
+
+      function pintarManicuristasConfig() {
+        const cont = document.getElementById('lista-manicuristas-config');
+        if (!manicuristasEdicion.length) {
+          cont.innerHTML = '<div style="padding: 14px 16px; color: var(--text-sec); font-size: 15px;">Sin manicuristas</div>';
+          return;
+        }
+        cont.innerHTML = manicuristasEdicion.map((n, i) => `
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 0.5px solid #E5E5EA;">
+            <span style="font-size: 16px;">${n}</span>
+            <button onclick="quitarManicuristaConfig(${i})" style="background: none; border: none; color: #FF3B30; font-size: 15px; font-weight: 600; cursor: pointer; padding: 0;">Quitar</button>
+          </div>`).join('');
+      }
+
+      function agregarManicuristaConfig() {
+        const input = document.getElementById('nueva-manicurista');
+        const nombre = input.value.trim();
+        if (!nombre) return;
+        if (manicuristasEdicion.some(n => n.toLowerCase() === nombre.toLowerCase())) {
+          alert(nombre + " ya está en la lista.");
+          return;
+        }
+        manicuristasEdicion.push(nombre);
+        input.value = '';
+        pintarManicuristasConfig();
+      }
+
+      function quitarManicuristaConfig(i) {
+        manicuristasEdicion.splice(i, 1);
+        pintarManicuristasConfig();
       }
 
       // ==========================================
