@@ -522,7 +522,11 @@
           <label class="form-label">Manicuristas</label>
           <div id="lista-manicuristas-config" style="background: white; border-radius: 12px; overflow: hidden;"></div>
           <div style="display: flex; gap: 10px; margin-top: 10px;">
-            <input type="text" id="nueva-manicurista" class="modal-input" placeholder="Nombre" style="flex: 1;">
+                        <input type="text" id="nueva-manicurista" class="modal-input" placeholder="Nombre" style="flex: 1; min-width: 0;">
+            <select id="nueva-manicurista-sede" class="modal-input select-ios" style="width: 125px; flex: none;">
+              <option value="Miraflores">Miraflores</option>
+              <option value="Surco">Surco</option>
+            </select>
             <button class="modal-btn" onclick="agregarManicuristaConfig()" style="background: var(--accent); color: white; padding: 0 16px; border-radius: 12px; font-size: 15px;">Agregar</button>
           </div>
           <div style="font-size: 12px; color: var(--text-sec); margin: 8px 5px 0 5px; line-height: 1.4;">Los cambios también se aplican en la app de registro al pulsar Guardar.</div>
@@ -715,7 +719,8 @@ function llamarAPI(action, args = null) {
       function cambiarSede(sede) {
         sedeActual = sede;
         try { localStorage.setItem('essenceAdminSede', sede); } catch (e) {}
-        pintarSelectorSede();
+                pintarSelectorSede();
+        actualizarListasEquipo(); // el filtro de manicuristas cambia según la sede
 
         const vista = vistaActivaId();
         if (vista === 'view-resumen') { if (resumenListo) calcularResumenLocal(); }
@@ -834,7 +839,7 @@ function llamarAPI(action, args = null) {
         llamarAPI('obtenerResumenInicial').then(function(res) {
           if (!res) return;
                     if (!datosCargados) clientasDataGlobal = res.clientasMes || [];
-          if (Array.isArray(res.manicuristas) && res.manicuristas.length) manicuristasConfig = res.manicuristas;
+                    if (Array.isArray(res.manicuristas) && res.manicuristas.length) manicuristasConfig = normalizarListaManicuristas(res.manicuristas);
           actualizarListasEquipo();
           actualizarResumenDesdeInicial(res);
         });
@@ -1167,11 +1172,37 @@ function llamarAPI(action, args = null) {
       // ==========================================
       // EQUIPO: la lista se arma desde los registros (últimos 90 días)
       // ==========================================
-            function obtenerEquipoActivo() {
-        // Si hay lista configurada en Ajustes, esa manda
+                  // Convierte lo que llega del servidor a [{nombre, sede}]
+      function normalizarListaManicuristas(lista) {
+        return (lista || []).map(m => (typeof m === 'string')
+          ? { nombre: m, sede: 'Miraflores' }
+          : { nombre: String(m.nombre || '').trim(), sede: m.sede || 'Miraflores' })
+          .filter(m => m.nombre);
+      }
+
+      // Sede asignada en Ajustes a una manicurista ('' si no está en la lista)
+      function sedeDeManicurista(nombre) {
+        if (!manicuristasConfig) return '';
+        const n = normalizarNombre(nombre);
+        const m = manicuristasConfig.find(x => normalizarNombre(x.nombre) === n);
+        return m ? m.sede : '';
+      }
+
+      // Muestra "· Surco" junto al nombre, solo cuando se ve "Todas"
+      function etiquetaSede(nombre) {
+        if (sedeActual !== 'todas') return '';
+        const s = sedeDeManicurista(nombre);
+        return s ? ` <span style="font-size: 11px; font-weight: 600; color: var(--sede);">· ${s}</span>` : '';
+      }
+
+      // soloSede = true: solo las manicuristas de la sede elegida arriba
+      function obtenerEquipoActivo(soloSede) {
         if (manicuristasConfig && manicuristasConfig.length) {
-          return manicuristasConfig.map(normalizarNombre).filter(Boolean).sort();
+          return manicuristasConfig
+            .filter(m => !soloSede || sedeActual === 'todas' || m.sede === sedeActual)
+            .map(m => normalizarNombre(m.nombre)).filter(Boolean).sort();
         }
+        // Respaldo si no hay lista: quienes registraron en los últimos 90 días
         const hoy = new Date();
         hoy.setHours(0,0,0,0);
         const limite = new Date(hoy);
@@ -1180,6 +1211,7 @@ function llamarAPI(action, args = null) {
         const activas = new Set();
         const todas = new Set();
         clientasDataGlobal.forEach(item => {
+          if (soloSede && !coincideSede(item)) return;
           const n = normalizarNombre(item.manicurista);
           if (!n) return;
           todas.add(n);
@@ -1190,16 +1222,20 @@ function llamarAPI(action, args = null) {
       }
 
       function actualizarListasEquipo() {
-        const nombres = obtenerEquipoActivo();
+        const nombres = obtenerEquipoActivo(true);
 
         const sel = document.getElementById('filtro-staff');
         const actual = sel.value;
         sel.innerHTML = '<option value="todas">Equipo (Todas)</option>' +
-          nombres.map(n => `<option value="${n.toLowerCase()}">${n}</option>`).join('');
+          nombres.map(n => {
+            const s = sedeActual === 'todas' ? sedeDeManicurista(n) : '';
+            return `<option value="${n.toLowerCase()}">${n}${s ? ' · ' + s : ''}</option>`;
+          }).join('');
         sel.value = nombres.some(n => n.toLowerCase() === actual) ? actual : 'todas';
 
+        // Al editar una clienta se puede elegir cualquier manicurista
         document.getElementById('edit-manicurista').innerHTML =
-          nombres.map(n => `<option value="${n}">${n}</option>`).join('');
+          obtenerEquipoActivo(false).map(n => `<option value="${n}">${n}</option>`).join('');
       }
 
       // ==========================================
@@ -1553,7 +1589,9 @@ function llamarAPI(action, args = null) {
       function abrirModalConfig() {
         document.getElementById('edit-meta-miraflores').value = metasSede.Miraflores || '';
                 document.getElementById('edit-meta-surco').value = metasSede.Surco || '';
-        manicuristasEdicion = (manicuristasConfig && manicuristasConfig.length ? manicuristasConfig : obtenerEquipoActivo()).slice();
+                manicuristasEdicion = (manicuristasConfig && manicuristasConfig.length)
+          ? manicuristasConfig.map(m => ({ nombre: m.nombre, sede: m.sede }))
+          : obtenerEquipoActivo(false).map(n => ({ nombre: n, sede: 'Miraflores' }));
         document.getElementById('nueva-manicurista').value = '';
         pintarManicuristasConfig();
         
@@ -1593,34 +1631,41 @@ function llamarAPI(action, args = null) {
           }
           cerrarModalConfig();
           metasSede = { Miraflores: Number(resMetas.Miraflores) || 0, Surco: Number(resMetas.Surco) || 0 };
-          manicuristasConfig = resMan;
+                    manicuristasConfig = normalizarListaManicuristas(resMan);
           actualizarListasEquipo();
           calcularResumenLocal();
         });
       }
 
-      function pintarManicuristasConfig() {
+            function pintarManicuristasConfig() {
         const cont = document.getElementById('lista-manicuristas-config');
         if (!manicuristasEdicion.length) {
           cont.innerHTML = '<div style="padding: 14px 16px; color: var(--text-sec); font-size: 15px;">Sin manicuristas</div>';
           return;
         }
-        cont.innerHTML = manicuristasEdicion.map((n, i) => `
-          <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 0.5px solid #E5E5EA;">
-            <span style="font-size: 16px;">${n}</span>
+        cont.innerHTML = manicuristasEdicion.map((m, i) => `
+          <div style="display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-bottom: 0.5px solid #E5E5EA;">
+            <span style="font-size: 16px; flex: 1;">${m.nombre}</span>
+            <select onchange="cambiarSedeManicuristaConfig(${i}, this.value)" style="border: none; background: var(--search-bg); border-radius: 8px; padding: 6px 10px; font-size: 14px; font-family: 'Inter', sans-serif; color: var(--text-main); -webkit-appearance: none;">
+              ${SEDES.map(s => `<option value="${s}" ${s === m.sede ? 'selected' : ''}>${s}</option>`).join('')}
+            </select>
             <button onclick="quitarManicuristaConfig(${i})" style="background: none; border: none; color: #FF3B30; font-size: 15px; font-weight: 600; cursor: pointer; padding: 0;">Quitar</button>
           </div>`).join('');
+      }
+
+      function cambiarSedeManicuristaConfig(i, sede) {
+        manicuristasEdicion[i].sede = sede;
       }
 
       function agregarManicuristaConfig() {
         const input = document.getElementById('nueva-manicurista');
         const nombre = input.value.trim();
         if (!nombre) return;
-        if (manicuristasEdicion.some(n => n.toLowerCase() === nombre.toLowerCase())) {
-          alert(nombre + " ya está en la lista.");
+        if (manicuristasEdicion.some(m => m.nombre.toLowerCase() === nombre.toLowerCase())) {
+          alert(nombre + " ya está en la lista. Usa un nombre distinto, por ejemplo con la inicial del apellido.");
           return;
         }
-        manicuristasEdicion.push(nombre);
+        manicuristasEdicion.push({ nombre: nombre, sede: document.getElementById('nueva-manicurista-sede').value });
         input.value = '';
         pintarManicuristasConfig();
       }
@@ -1652,7 +1697,7 @@ function llamarAPI(action, args = null) {
 
         // Todas las chicas activas aparecen, aunque tengan 0
         let equipo = {};
-        obtenerEquipoActivo().forEach(n => equipo[n] = { ventasTotales: 0, ventasUpsell: 0, upsells: 0 });
+                obtenerEquipoActivo(true).forEach(n => equipo[n] = { ventasTotales: 0, ventasUpsell: 0, upsells: 0 });
 
         const hoy = new Date();
         hoy.setHours(0,0,0,0);
@@ -1732,7 +1777,7 @@ function llamarAPI(action, args = null) {
           htmlCom.push(`
             <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 0.5px solid #E5E5EA;">
               <div>
-                <div style="font-size: 15px; font-weight: 600;">${nombre}</div>
+                <div style="font-size: 15px; font-weight: 600;">${nombre}${etiquetaSede(nombre)}</div>
                 <div style="font-size: 11px; color: var(--text-sec);">Up selling: ${formatearMoneda(datos.ventasUpsell)} de ${formatearMoneda(datos.ventasTotales)}</div>
               </div>
               <div style="font-size: 16px; font-weight: 700; color: ${comisionCalculada > 0 ? 'var(--success)' : 'var(--text-sec)'};">${formatearMoneda(comisionCalculada)}</div>
@@ -1758,7 +1803,7 @@ function llamarAPI(action, args = null) {
           
           htmlUp.push(`
             <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 0.5px solid #E5E5EA;">
-              <div style="font-size: 15px; font-weight: 600;">${item.nombre}</div>
+              <div style="font-size: 15px; font-weight: 600;">${item.nombre}${etiquetaSede(item.nombre)}</div>
               <div style="font-size: 16px; font-weight: ${fontWeight}; color: ${colorTexto};">${item.upsells} logrados</div>
             </div>
           `);
