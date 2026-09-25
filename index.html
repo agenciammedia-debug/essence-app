@@ -836,12 +836,20 @@ function llamarAPI(action, args = null) {
       document.addEventListener("DOMContentLoaded", function() {
         pintarSelectorSede();
 
-        llamarAPI('obtenerResumenInicial').then(function(res) {
-          if (!res) return;
+                llamarAPI('obtenerResumenInicial').then(function(res) {
+          if (!res) {
+            document.getElementById('loading-resumen').innerText = 'No se pudo cargar el resumen. Cierra y abre la app.';
+            return;
+          }
+          try {
                     if (!datosCargados) clientasDataGlobal = res.clientasMes || [];
                     if (Array.isArray(res.manicuristas) && res.manicuristas.length) manicuristasConfig = normalizarListaManicuristas(res.manicuristas);
-          actualizarListasEquipo();
+                    actualizarListasEquipo();
           actualizarResumenDesdeInicial(res);
+          } catch (err) {
+            document.getElementById('loading-resumen').innerText = 'Error: ' + err.message;
+            console.error(err);
+          }
         });
 
         // Gastos en paralelo: el Estado de Resultados los necesita
