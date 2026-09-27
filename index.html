@@ -402,7 +402,7 @@
       <div class="card" style="padding: 20px;">
         <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">
           <div>
-            <div class="card-title" style="margin: 0; color: var(--accent);">Comisión Up Selling</div>
+            <div class="card-title" style="margin: 0; color: var(--accent);">Comisiones</div>
             <div id="equipo-rango-fechas-lbl" style="font-size: 11px; color: var(--text-sec); margin-top: 4px; font-weight: 500;"> Del -- al --</div>
           </div>
           <div style="text-align: right;">
@@ -1020,7 +1020,7 @@ function llamarAPI(action, args = null) {
           htmlRendimiento.push(`
             <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 0.5px solid #E5E5EA;">
               <div>
-                <div style="font-size: 15px; font-weight: 600;">${nombre}</div>
+                <div style="font-size: 15px; font-weight: 600;">${nombre}${etiquetaSede(nombre)}</div>
                 <div style="font-size: 12px; color: var(--text-sec); margin-top: 3px;">${datos.clientas} clientas atendidas</div>
               </div>
               <div style="text-align: right;">
@@ -1061,7 +1061,7 @@ function llamarAPI(action, args = null) {
           const s = sedeDe(item);
           if (!r[s]) return;
           const monto = limpiarMonto(item.total);
-          if (esUpsell(item)) r[s].comision += monto * COMISION_UPSELL;
+                    r[s].comision += monto * COMISION_UPSELL; // 10% de todo lo facturado
           if (!esCanje(item)) r[s].ingresos += monto;
         });
 
@@ -1087,7 +1087,7 @@ function llamarAPI(action, args = null) {
 
         const filas = [
           { label: 'Ingresos', key: 'ingresos' },
-          { label: 'Com. up selling', key: 'comision', resta: true },
+                    { label: 'Comisiones', key: 'comision', resta: true },
           { label: 'Gastos de sede', key: 'gastos', resta: true },
           { label: 'Margen', key: 'margen', linea: true },
           { label: 'Gastos generales', key: 'generales', resta: true },
@@ -1773,26 +1773,26 @@ function llamarAPI(action, args = null) {
         let totalUpsellsGlobal = 0;
         const lineaSede = sedeActual === 'todas' ? '' : `📍 Sede: ${sedeActual}\n`;
         const lineaFechas = `🗓️ Del ${formatoFechaCorta(dInicio)} al ${formatoFechaCorta(dFin)}\n\n`;
-        textoCopiarComisiones = `💰 *COMISIONES UP SELLING (${porcentajeTxt}%)*\n` + lineaSede + lineaFechas;
+        textoCopiarComisiones = `💰 *PAGO DE COMISIONES (${porcentajeTxt}%)*\n` + lineaSede + lineaFechas;
         textoCopiarUpSelling = `🚀 *UP SELLING* 🤑💕\n` + lineaSede + lineaFechas;
 
         // 1. Comisiones (orden alfabético)
         Object.keys(equipo).sort().forEach(nombre => {
           let datos = equipo[nombre];
-          let comisionCalculada = datos.ventasUpsell * porcentaje;
+                    let comisionCalculada = datos.ventasTotales * porcentaje;
           totalComisionesPeriodo += comisionCalculada;
 
           htmlCom.push(`
             <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 0.5px solid #E5E5EA;">
               <div>
                 <div style="font-size: 15px; font-weight: 600;">${nombre}${etiquetaSede(nombre)}</div>
-                <div style="font-size: 11px; color: var(--text-sec);">Up selling: ${formatearMoneda(datos.ventasUpsell)} de ${formatearMoneda(datos.ventasTotales)}</div>
+                <div style="font-size: 11px; color: var(--text-sec);">Facturado: ${formatearMoneda(datos.ventasTotales)}</div>
               </div>
               <div style="font-size: 16px; font-weight: 700; color: ${comisionCalculada > 0 ? 'var(--success)' : 'var(--text-sec)'};">${formatearMoneda(comisionCalculada)}</div>
             </div>
           `);
           if (comisionCalculada > 0) {
-            textoCopiarComisiones += `👤 ${nombre}: *${formatearMoneda(comisionCalculada)}* (${datos.upsells} up selling)\n`;
+            textoCopiarComisiones += `👤 ${nombre}: *${formatearMoneda(comisionCalculada)}* (facturado ${formatearMoneda(datos.ventasTotales)})\n`;
           }
         });
 
