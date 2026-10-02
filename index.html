@@ -15,9 +15,7 @@
       window.OneSignalDeferred = window.OneSignalDeferred || [];
       OneSignalDeferred.push(async function(OneSignal) {
         await OneSignal.init({
-          appId: "bcbd1b58-8c65-4c23-8390-cf901d25ba83",
-          serviceWorkerPath: "essence-app/push/onesignal/OneSignalSDKWorker.js",
-          serviceWorkerParam: { scope: "/essence-app/push/onesignal/" }
+                    appId: "bcbd1b58-8c65-4c23-8390-cf901d25ba83"
         });
         if (typeof actualizarBotonPush === 'function') actualizarBotonPush();
       });
