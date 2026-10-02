@@ -712,6 +712,7 @@ function llamarAPI(action, args = null) {
       // ==========================================
       const SEDES = ['Miraflores', 'Surco'];
       const COMISION_UPSELL = 0.10; // 10% del total de cada atención con up selling
+      const TOPE_POS = 7900;
 
       let sedeActual = 'todas';
       try {
@@ -1058,8 +1059,9 @@ function llamarAPI(action, args = null) {
           `);
         });
         
-        listaRendimiento.innerHTML = htmlRendimiento.length ? htmlRendimiento.join('') : '<div class="empty-state" style="padding: 10px 0;">No hay datos en este periodo</div>';
+                listaRendimiento.innerHTML = htmlRendimiento.length ? htmlRendimiento.join('') : '<div class="empty-state" style="padding: 10px 0;">No hay datos en este periodo</div>';
 
+        dibujarPOS();
         dibujarEstadoResultados(filtro);
       }
 
@@ -1628,6 +1630,7 @@ function llamarAPI(action, args = null) {
           ? manicuristasConfig.map(m => ({ nombre: m.nombre, sede: m.sede }))
           : obtenerEquipoActivo(false).map(n => ({ nombre: n, sede: 'Miraflores' }));
         document.getElementById('nueva-manicurista').value = '';
+        actualizarBotonPush();
         pintarManicuristasConfig();
         
         const modal = document.getElementById('modal-configuracion');
