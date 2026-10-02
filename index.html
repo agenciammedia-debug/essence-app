@@ -10,6 +10,19 @@
     <link rel="manifest" href="manifest.json">
     
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+        <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+    <script>
+      window.OneSignalDeferred = window.OneSignalDeferred || [];
+      OneSignalDeferred.push(async function(OneSignal) {
+        await OneSignal.init({
+          appId: "bcbd1b58-8c65-4c23-8390-cf901d25ba83",
+          serviceWorkerPath: "essence-app/push/onesignal/OneSignalSDKWorker.js",
+          serviceWorkerParam: { scope: "/essence-app/push/onesignal/" }
+        });
+        if (typeof actualizarBotonPush === 'function') actualizarBotonPush();
+      });
+    </script>
+
     
     <style>
       :root {
@@ -255,6 +268,15 @@
           </div>
         </div>
 
+
+                <div class="card">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div class="card-title" style="margin: 0;">POS del mes</div>
+            <div style="font-size: 11px; color: var(--text-sec); font-weight: 600;">Tope S/. 7,900 c/u</div>
+          </div>
+          <div id="lista-pos" style="margin-top: 12px;"></div>
+        </div>
+        
         <div class="card">
           <div class="card-title"></div>
           
@@ -530,7 +552,12 @@
             <button class="modal-btn" onclick="agregarManicuristaConfig()" style="background: var(--accent); color: white; padding: 0 16px; border-radius: 12px; font-size: 15px;">Agregar</button>
           </div>
           <div style="font-size: 12px; color: var(--text-sec); margin: 8px 5px 0 5px; line-height: 1.4;">Los cambios también se aplican en la app de registro al pulsar Guardar.</div>
-        </div>  
+        </div> 
+                <div class="form-group" style="margin-top: 24px;">
+          <label class="form-label">Notificaciones</label>
+          <button id="btn-push" class="modal-btn" onclick="activarPush()" style="width: 100%; background: white; padding: 14px; border-radius: 12px; font-size: 16px;">🔔 Activar en este iPhone</button>
+          <div style="font-size: 12px; color: var(--text-sec); margin: 8px 5px 0 5px; line-height: 1.4;">Cada persona debe activarlas en su iPhone, abriendo la app desde el ícono de inicio.</div>
+        </div>
       </div>
     </div>
 
@@ -2052,6 +2079,83 @@ function llamarAPI(action, args = null) {
           if (res && res.fila) gastoOptimista.fila = res.fila;
           else alert("No se pudo guardar el gasto en el servidor. Refresca la app.");
         });
+      }
+
+            // ==========================================
+      // POS: se llena POS 1 hasta el tope; el cobro que no entra pasa al POS 2
+      // ==========================================
+      function calcularPOS() {
+        const hoy = new Date();
+        const pos = {};
+        SEDES.forEach(s => pos[s] = { pos1: 0, pos2: 0, cerrado: false });
+        clientasDataGlobal
+          .filter(item => {
+            const f = parseFechaDMY(item.fecha);
+            return f && f.getMonth() === hoy.getMonth() && f.getFullYear() === hoy.getFullYear()
+              && clasificarMetodo(item.metodo) === 'tarjeta';
+          })
+          .sort((a, b) => a.fila - b.fila)
+          .forEach(item => {
+            const p = pos[sedeDe(item)];
+            if (!p) return;
+            const monto = limpiarMonto(item.total);
+            if (!p.cerrado && p.pos1 + monto <= TOPE_POS) p.pos1 += monto;
+            else { p.cerrado = true; p.pos2 += monto; }
+          });
+        return pos;
+      }
+
+      function dibujarPOS() {
+        const pos = calcularPOS();
+        const sedes = sedeActual === 'todas' ? SEDES : [sedeActual];
+        const etiqueta = (txt, color, fondo) => ` <span style="font-size: 10px; font-weight: 700; color: ${color}; background: ${fondo}; padding: 2px 6px; border-radius: 5px; margin-left: 4px;">${txt}</span>`;
+        const barra = (nombre, monto, lleno, enUso) => {
+          const pct = lleno ? 100 : Math.min(100, Math.round(monto / TOPE_POS * 100));
+          const color = pct >= 95 ? '#FF3B30' : pct >= 80 ? '#FF9500' : 'var(--accent)';
+          const quedan = enUso && !lleno ? ` · quedan ${formatearMoneda(Math.max(0, TOPE_POS - monto))}` : '';
+          return `
+            <div style="margin-bottom: 12px;">
+              <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px;">
+                <span style="font-weight: 600;">${nombre}${enUso ? etiqueta('EN USO', 'var(--success)', 'rgba(52,199,89,0.12)') : ''}${lleno ? etiqueta('LLENO', '#FF3B30', 'rgba(255,59,48,0.1)') : ''}</span>
+                <span style="color: var(--text-sec);">${formatearMoneda(monto)} · ${pct}%</span>
+              </div>
+              <div class="progress-container" style="height: 8px; margin-top: 0;"><div class="progress-fill" style="width: ${pct}%; background-color: ${color};"></div></div>
+              ${quedan ? `<div style="font-size: 11px; color: var(--text-sec); margin-top: 4px;">${quedan.slice(3)}</div>` : ''}
+            </div>`;
+        };
+        document.getElementById('lista-pos').innerHTML = sedes.map(s => {
+          const p = pos[s];
+          return `<div style="font-size: 11px; font-weight: 700; color: var(--sede); text-transform: uppercase; margin: 4px 0 8px;">📍 ${s}</div>`
+            + barra('POS 1', p.pos1, p.cerrado, !p.cerrado)
+            + barra('POS 2', p.pos2, p.pos2 >= TOPE_POS, p.cerrado);
+        }).join('');
+      }
+
+      // ==========================================
+      // NOTIFICACIONES PUSH (OneSignal)
+      // ==========================================
+      function actualizarBotonPush() {
+        const btn = document.getElementById('btn-push');
+        if (!btn || !window.OneSignal || !OneSignal.Notifications) return;
+        if (!OneSignal.Notifications.isPushSupported()) {
+          btn.innerText = 'Abre la app desde el ícono de inicio';
+          btn.disabled = true;
+          return;
+        }
+        const activo = OneSignal.Notifications.permission && OneSignal.User.PushSubscription.optedIn;
+        btn.innerText = activo ? '✅ Notificaciones activadas' : '🔔 Activar en este iPhone';
+        btn.disabled = !!activo;
+      }
+
+      async function activarPush() {
+        if (!window.OneSignal || !OneSignal.Notifications) { alert('Cargando, intenta en unos segundos.'); return; }
+        try {
+          await OneSignal.Notifications.requestPermission();
+          if (OneSignal.Notifications.permission && !OneSignal.User.PushSubscription.optedIn) {
+            await OneSignal.User.PushSubscription.optIn();
+          }
+        } catch (e) { alert('No se pudo activar: ' + e.message); }
+        actualizarBotonPush();
       }
 
       // ==========================================
