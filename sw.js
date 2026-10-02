@@ -1,4 +1,4 @@
-const CACHE_NAME = 'essence-cache-v19'; // ⚠️ Sube este número CADA VEZ que edites Index.html
+const CACHE_NAME = 'essence-cache-v20'; // ⚠️ Sube este número CADA VEZ que edites Index.html
 const STATIC_ASSETS = ['./manifest.json'];
 
 self.addEventListener('install', event => {
@@ -21,7 +21,7 @@ self.addEventListener('fetch', event => {
   const url = event.request.url;
 
   // Nunca cachear llamadas al Apps Script (datos dinámicos)
-  if (url.includes('script.google.com')) {
+  if (url.includes('script.google.com') || url.includes('onesignal.com')) {
     event.respondWith(fetch(event.request));
     return;
   }
