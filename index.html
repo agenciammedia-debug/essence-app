@@ -674,9 +674,9 @@
 
 const API_URL = "https://script.google.com/macros/s/AKfycbwRPIF993OnqZTnoKHUhutoSTQNKSmHnb7KT-DJHte5gTB53qPzGc6P18yTLOh1UNc_Vg/exec";
 
-function llamarAPI(action, args = null) {
+function llamarAPI(action, args = null, timeoutMs = 30000) {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s máximo de espera
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   return fetch(API_URL, {
     method: 'POST',
@@ -695,9 +695,11 @@ function llamarAPI(action, args = null) {
   })
   .catch(err => {
     clearTimeout(timeoutId);
+    // Ya NO mostramos alert(): una alerta bloqueante interrumpe cualquier
+    // reintento automático en curso. Cada acción que llama a esta función
+    // decide cómo avisar si hace falta (ver guardarEdicion, eliminarClienta...).
     if (err.name === 'AbortError') {
       console.warn("Tiempo de espera agotado: " + action);
-      alert("La conexión está tardando demasiado. Intenta de nuevo en unos segundos.");
     } else {
       console.error("Error al conectar con Google:", err);
     }
@@ -851,9 +853,12 @@ function llamarAPI(action, args = null) {
         intentarCargarHistorial(0);
       }
 
-      function intentarCargarHistorial(intento) {
+            function intentarCargarHistorial(intento) {
         cargandoHistorial = true;
-        llamarAPI('obtenerDatosClientas').then(function(datos) {
+        // Timeout corto (10s) a propósito: aunque el teléfono se rinda, el
+        // cálculo sigue corriendo en el servidor y deja la caché lista —
+        // el siguiente intento suele responder casi al instante.
+        llamarAPI('obtenerDatosClientas', null, 10000).then(function(datos) {
           if (datos) {
             clientasDataGlobal = datos;
             datosCargados = true;
@@ -864,14 +869,14 @@ function llamarAPI(action, args = null) {
             pendientes.forEach(f => f(false));
             return;
           }
-          if (intento < 4) {
-            const espera = Math.min(2000 * Math.pow(1.6, intento), 12000);
+          if (intento < 3) {
+            const espera = Math.min(1500 * Math.pow(1.8, intento), 5000);
             setTimeout(function() { intentarCargarHistorial(intento + 1); }, espera);
           } else {
             cargandoHistorial = false;
             const pendientes = _esperandoHistorial;
             _esperandoHistorial = [];
-            pendientes.forEach(f => f(true)); // true = no se pudo cargar tras varios intentos
+            pendientes.forEach(f => f(true));
           }
         });
       }
