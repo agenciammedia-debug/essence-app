@@ -881,24 +881,9 @@ function llamarAPI(action, args = null, timeoutMs = 30000) {
         });
       }
 
-      document.addEventListener("DOMContentLoaded", function() {
+            document.addEventListener("DOMContentLoaded", function() {
         pintarSelectorSede();
-
-                llamarAPI('obtenerResumenInicial').then(function(res) {
-          if (!res) {
-            document.getElementById('loading-resumen').innerText = 'No se pudo cargar el resumen. Cierra y abre la app.';
-            return;
-          }
-          try {
-                    if (!datosCargados) clientasDataGlobal = res.clientasMes || [];
-                    if (Array.isArray(res.manicuristas) && res.manicuristas.length) manicuristasConfig = normalizarListaManicuristas(res.manicuristas);
-                    actualizarListasEquipo();
-          actualizarResumenDesdeInicial(res);
-          } catch (err) {
-            document.getElementById('loading-resumen').innerText = 'Error: ' + err.message;
-            console.error(err);
-          }
-        });
+        cargarResumenInicial(0);
 
         // Gastos en paralelo: el Estado de Resultados los necesita
         cargarGastosDatos(function() {
@@ -907,6 +892,29 @@ function llamarAPI(action, args = null, timeoutMs = 30000) {
           }
         });
       });
+
+      function cargarResumenInicial(intento) {
+        llamarAPI('obtenerResumenInicial', null, 10000).then(function(res) {
+          if (!res) {
+            if (intento < 4) {
+              const espera = Math.min(1500 * Math.pow(1.8, intento), 6000);
+              setTimeout(function() { cargarResumenInicial(intento + 1); }, espera);
+            } else {
+              document.getElementById('loading-resumen').innerText = 'No se pudo cargar. Revisa tu conexión e inténtalo de nuevo.';
+            }
+            return;
+          }
+          try {
+            if (!datosCargados) clientasDataGlobal = res.clientasMes || [];
+            if (Array.isArray(res.manicuristas) && res.manicuristas.length) manicuristasConfig = normalizarListaManicuristas(res.manicuristas);
+            actualizarListasEquipo();
+            actualizarResumenDesdeInicial(res);
+          } catch (err) {
+            document.getElementById('loading-resumen').innerText = 'Error: ' + err.message;
+            console.error(err);
+          }
+        });
+      }
 
       function actualizarResumenDesdeInicial(res) {
         metaMensualGlobal = limpiarMonto(res.meta);
@@ -1920,25 +1928,50 @@ function llamarAPI(action, args = null, timeoutMs = 30000) {
       let _esperandoGastos = [];
 
       function cargarGastosDatos(callback) {
-        if (gastosCargados) { if (callback) callback(); return; }
+        if (gastosCargados) { if (callback) callback(false); return; }
         if (callback) _esperandoGastos.push(callback);
         if (cargandoGastos) return;
+        intentarCargarGastos(0);
+      }
+
+      function intentarCargarGastos(intento) {
         cargandoGastos = true;
-        llamarAPI('obtenerDatosGastos').then(function(datos) {
-          cargandoGastos = false;
-          gastosDataGlobal = datos || [];
-          gastosCargados = true;
-          const pendientes = _esperandoGastos;
-          _esperandoGastos = [];
-          pendientes.forEach(f => f());
+        llamarAPI('obtenerDatosGastos', null, 10000).then(function(datos) {
+          if (datos) {
+            gastosDataGlobal = datos;
+            gastosCargados = true;
+            cargandoGastos = false;
+            const pendientes = _esperandoGastos;
+            _esperandoGastos = [];
+            pendientes.forEach(f => f(false));
+            return;
+          }
+          if (intento < 3) {
+            const espera = Math.min(1500 * Math.pow(1.8, intento), 5000);
+            setTimeout(function() { intentarCargarGastos(intento + 1); }, espera);
+          } else {
+            cargandoGastos = false;
+            const pendientes = _esperandoGastos;
+            _esperandoGastos = [];
+            pendientes.forEach(f => f(true));
+          }
         });
       }
 
       function cargarGastosBase() {
-        if (!gastosCargados) document.getElementById('loading-gastos').style.display = 'block';
-        cargarGastosDatos(function() {
-          document.getElementById('loading-gastos').style.display = 'none';
-          if (vistaActivaId() === 'view-gastos') mostrarGastos();
+        const loader = document.getElementById('loading-gastos');
+        if (!gastosCargados) {
+          loader.innerText = 'Cargando gastos...';
+          loader.style.display = 'block';
+        }
+        cargarGastosDatos(function(huboError) {
+          if (vistaActivaId() !== 'view-gastos') return;
+          if (huboError && !gastosCargados) {
+            loader.innerText = 'No se pudo cargar. Vuelve a intentarlo en unos segundos.';
+            return;
+          }
+          loader.style.display = 'none';
+          mostrarGastos();
         });
       }
 
