@@ -841,21 +841,38 @@ function llamarAPI(action, args = null) {
       let _esperandoHistorial = [];
 
       // Carga el historial completo UNA sola vez y avisa a todos los que lo esperan
+            // Carga el historial completo UNA sola vez y avisa a todos los que lo esperan.
+      // Si el servidor no responde a tiempo, reintenta solo (como una app de banco):
+      // nunca se muestra "0" porque un dato tardó en llegar.
       function asegurarHistorial(callback) {
-        if (datosCargados) { callback(); return; }
+        if (datosCargados) { callback(false); return; }
         _esperandoHistorial.push(callback);
         if (cargandoHistorial) return;
+        intentarCargarHistorial(0);
+      }
+
+      function intentarCargarHistorial(intento) {
         cargandoHistorial = true;
         llamarAPI('obtenerDatosClientas').then(function(datos) {
-          cargandoHistorial = false;
           if (datos) {
             clientasDataGlobal = datos;
             datosCargados = true;
             actualizarListasEquipo();
+            cargandoHistorial = false;
+            const pendientes = _esperandoHistorial;
+            _esperandoHistorial = [];
+            pendientes.forEach(f => f(false));
+            return;
           }
-          const pendientes = _esperandoHistorial;
-          _esperandoHistorial = [];
-          pendientes.forEach(f => f());
+          if (intento < 4) {
+            const espera = Math.min(2000 * Math.pow(1.6, intento), 12000);
+            setTimeout(function() { intentarCargarHistorial(intento + 1); }, espera);
+          } else {
+            cargandoHistorial = false;
+            const pendientes = _esperandoHistorial;
+            _esperandoHistorial = [];
+            pendientes.forEach(f => f(true)); // true = no se pudo cargar tras varios intentos
+          }
         });
       }
 
@@ -910,36 +927,34 @@ function llamarAPI(action, args = null) {
         return metasSede[sedeActual] || 0;
       }
 
-      // Calcula los días restantes del mes ignorando domingos
+            // Calcula los días que faltan para terminar el mes (se trabaja los 7 días)
       function calcularDiasLaborablesRestantes() {
         const hoy = new Date();
-        const año = hoy.getFullYear();
-        const mes = hoy.getMonth();
-        const ultimoDiaMes = new Date(año, mes + 1, 0).getDate();
-        
-        let diasLaborables = 0;
-        for (let dia = hoy.getDate() + 1; dia <= ultimoDiaMes; dia++) {
-          let fechaTemp = new Date(año, mes, dia);
-          if (fechaTemp.getDay() !== 0) diasLaborables++;
-        }
-        return diasLaborables;
+        const ultimoDiaMes = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).getDate();
+        return ultimoDiaMes - hoy.getDate();
       }
 
       // ==========================================
       // RESUMEN
       // ==========================================
-      function filtrarResumen() {
+            function filtrarResumen() {
         const divRango = document.getElementById('resumen-rango-fechas');
         const filtro = document.getElementById('resumen-filtro-fecha').value;
         divRango.style.display = (filtro === 'rango') ? 'flex' : 'none';
 
-        // Cualquier filtro que no sea "Este mes" o "Hoy" puede necesitar datos
-        // fuera del mes actual (ej. "Ayer" el día 1, "30 días" cruzando de mes).
         const necesitaHistorial = (filtro !== 'este_mes' && filtro !== 'hoy');
         if (necesitaHistorial && !datosCargados) {
-          document.getElementById('loading-resumen').style.display = 'block';
+          const loaderResumen = document.getElementById('loading-resumen');
+          loaderResumen.innerText = 'Sincronizando Resumen...';
+          loaderResumen.style.display = 'block';
           document.getElementById('content-resumen').style.display = 'none';
-          asegurarHistorial(calcularResumenLocal);
+          asegurarHistorial(function(huboError) {
+            if (huboError && !datosCargados) {
+              loaderResumen.innerText = 'No se pudo cargar. Vuelve a intentarlo en unos segundos.';
+              return;
+            }
+            calcularResumenLocal();
+          });
           return;
         }
         calcularResumenLocal();
@@ -1174,14 +1189,21 @@ function llamarAPI(action, args = null) {
           calcularResumenLocal(); // refleja ediciones o gastos nuevos
         }
 
-        if (idVista === 'clientas') {
+                if (idVista === 'clientas') {
           if (datosCargados) {
             filtrarClientas();
           } else {
-            document.getElementById('loading-clientas').style.display = 'block';
-            asegurarHistorial(function() {
-              document.getElementById('loading-clientas').style.display = 'none';
-              if (vistaActivaId() === 'view-clientas') filtrarClientas();
+            const loaderClientas = document.getElementById('loading-clientas');
+            loaderClientas.innerText = 'Cargando base de datos...';
+            loaderClientas.style.display = 'block';
+            asegurarHistorial(function(huboError) {
+              if (vistaActivaId() !== 'view-clientas') return;
+              if (huboError && !datosCargados) {
+                loaderClientas.innerText = 'No se pudo cargar. Vuelve a intentarlo en unos segundos.';
+                return;
+              }
+              loaderClientas.style.display = 'none';
+              filtrarClientas();
             });
           }
         }
@@ -1190,9 +1212,14 @@ function llamarAPI(action, args = null) {
           cargarFacturacion();
         }
 
-        if (idVista === 'comisiones') {
-          asegurarHistorial(function() {
-            if (vistaActivaId() === 'view-comisiones') filtrarEquipo();
+                if (idVista === 'comisiones') {
+          asegurarHistorial(function(huboError) {
+            if (vistaActivaId() !== 'view-comisiones') return;
+            if (huboError && !datosCargados) {
+              document.getElementById('lista-comisiones').innerHTML = '<div class="empty-state">No se pudo cargar. Vuelve a intentarlo en unos segundos.</div>';
+              return;
+            }
+            filtrarEquipo();
           });
         }
 
@@ -1403,7 +1430,7 @@ function llamarAPI(action, args = null) {
       // ==========================================
       // INGRESOS (calculados desde Essence, por sede)
       // ==========================================
-      function cargarFacturacion() {
+            function cargarFacturacion() {
         const filtro = document.getElementById('fact-filtro-fecha').value;
         document.getElementById('fact-rango-fechas').style.display = (filtro === 'rango') ? 'flex' : 'none';
 
@@ -1411,9 +1438,14 @@ function llamarAPI(action, args = null) {
         if (necesitaHistorial && !datosCargados) {
           document.getElementById('loading-facturacion').style.display = 'block';
           document.getElementById('lista-facturacion').innerHTML = '';
-          asegurarHistorial(function() {
+          asegurarHistorial(function(huboError) {
             document.getElementById('loading-facturacion').style.display = 'none';
-            if (vistaActivaId() === 'view-facturacion') mostrarFacturacion();
+            if (vistaActivaId() !== 'view-facturacion') return;
+            if (huboError && !datosCargados) {
+              document.getElementById('lista-facturacion').innerHTML = '<div class="empty-state">No se pudo cargar. Vuelve a intentarlo en unos segundos.</div>';
+              return;
+            }
+            mostrarFacturacion();
           });
           return;
         }
