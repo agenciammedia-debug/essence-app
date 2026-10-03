@@ -2142,8 +2142,17 @@ function llamarAPI(action, args = null, timeoutMs = 30000) {
         const maxFila = gastosDataGlobal.reduce((max, g) => Math.max(max, g.fila), 0);
         const gastoOptimista = Object.assign({fila: maxFila + 1}, nuevoGasto);
         gastosDataGlobal.unshift(gastoOptimista);
-        mostrarGastos();
         cerrarModalGasto();
+
+        // Si estás viendo una sede distinta a la del gasto recién registrado,
+        // el filtro lo ocultaría aunque sí se haya guardado — por eso cambiamos
+        // la vista a esa sede, para que el gasto nuevo sea visible al instante
+        // y nadie piense que falló.
+        if (sedeActual !== 'todas' && sedeActual !== nuevoGasto.sede) {
+          cambiarSede(nuevoGasto.sede);
+        } else {
+          mostrarGastos();
+        }
 
         // 2. Guardar en segundo plano
         llamarAPI('registrarNuevoGasto', nuevoGasto).then(function(res) {
